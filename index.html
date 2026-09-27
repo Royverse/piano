@@ -68,6 +68,7 @@
       <div class="conduct-bar" data-conduct-bar hidden>
         <span class="conduct-source" data-conduct-source>Camera</span>
         <span class="conduct-status" data-conduct-status role="status"></span>
+        <button type="button" class="take-button conduct-beat-btn" data-conduct-beat title="Strike beat (Space, ↓, or tap)">♩ Beat</button>
         <button type="button" class="take-button" data-conduct-cut title="Cut off (Esc)">Cut off</button>
         <button type="button" class="take-button" data-reflection-toggle>Hide camera</button>
       </div>
@@ -99,30 +100,30 @@
 
       <section class="conduct-intro" data-conduct-intro hidden aria-labelledby="conduct-title">
         <h2 class="conduct-title" id="conduct-title">Conduct the orchestra</h2>
-        <p class="conduct-lede">A string orchestra is tuning up, and it plays only on your beat.</p>
+        <p class="conduct-lede">A string orchestra is waiting on your podium. The music advances only when you beat.</p>
         <ol class="conduct-steps">
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 33V9"/><path d="M13 16l7-7 7 7"/></svg>
-            <b>Raise your hand</b>
-            <span>The tuning stops. They're waiting for you.</span>
+            <b>1. Wave down & up</b>
+            <span>Move your hand like holding a baton. Each downstroke strikes the next beat; your pace sets the tempo.</span>
           </li>
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 8c5 17 9 24 12 24s7-7 12-22"/><circle cx="20" cy="32" r="2.6"/></svg>
-            <b>Beat down</b>
-            <span>Each beat plays the next. Your pace sets the tempo; bigger beats play louder.</span>
+            <b>2. Shape dynamics</b>
+            <span>Bigger sweeps play forte (loud); small waves play piano (soft). Point left for cellos & basses, right for violins.</span>
           </li>
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="8"/><path d="M6 20h4M30 20h4"/></svg>
-            <b>Close your hand</b>
-            <span>Everyone stops together. Finish big and see what happens.</span>
+            <b>3. Hold a fist to cut off</b>
+            <span>Clench your hand for a moment to stop the orchestra. Or press <kbd>Esc</kbd> / click <b>Cut off</b> anytime.</span>
           </li>
         </ol>
-        <p class="conduct-more">Point left for the cellos and basses, right for the violins. Raise your other hand to swell. Hold keys on the piano and choose <i>Your chords</i> to lead them through your own harmony.</p>
+        <p class="conduct-more">You can also tap anywhere on stage, click the <b>♩ Beat</b> button, or tap <kbd>Space</kbd> / <kbd>↓</kbd> to strike beats directly.</p>
         <div class="conduct-actions">
           <button type="button" class="button button-primary" data-conduct-camera>Use my camera</button>
           <button type="button" class="button" data-conduct-mouse><span class="only-keys">Use my mouse</span><span class="only-touch">Use touch</span></button>
         </div>
-        <p class="conduct-note">Hand tracking runs in your browser, and the camera image never leaves your device. The first time, it downloads about 20 MB.</p>
+        <p class="conduct-note">Hand tracking runs privately in your browser with zero camera video ever leaving your device. Instant CPU neural engine.</p>
         <p class="conduct-error" data-conduct-error role="alert"></p>
       </section>
     </main>

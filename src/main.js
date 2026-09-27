@@ -270,6 +270,15 @@ document.addEventListener('keydown', (e) => {
   }
   if (ui.help.open) return;
 
+  if (conduct.active && conduct.state !== 'intro') {
+    if (e.code === 'Space' || e.code === 'ArrowDown') {
+      if (document.activeElement && document.activeElement !== document.body && !document.activeElement.matches?.('[data-conduct-beat]')) return;
+      e.preventDefault();
+      conduct.manualBeat();
+      return;
+    }
+  }
+
   if (e.code === 'Space') {
     // Space still presses a focused button for keyboard users.
     if (document.activeElement && document.activeElement !== document.body) return;

@@ -144,3 +144,15 @@ test('cameraProblem explains failures in clear, actionable terms', () => {
   assert.match(cameraProblem({ name: 'NotReadableError' }), /Another app is using the camera/i);
   assert.match(cameraProblem(new Error('Network error')), /Hand tracking couldn't load/i);
 });
+
+test('tapBeat strikes a beat, tracks coordinates, and calculates tempo', () => {
+  const beats = [];
+  const c = new Conductor({ beat: (b) => beats.push(b) });
+  c.tapBeat(1000, 0.25, { x: 0.4, y: 0.6 });
+  c.tapBeat(1600, 0.25, { x: 0.45, y: 0.65 });
+  assert.equal(beats.length, 2);
+  assert.equal(beats[0].x, 0.4);
+  assert.equal(beats[1].x, 0.45);
+  assert.ok(Math.abs(c.tempo - 100) < 5, `Expected tempo ~100 bpm, got ${c.tempo}`);
+});
+

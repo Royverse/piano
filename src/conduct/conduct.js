@@ -43,6 +43,7 @@ export class ConductMode {
     $('[data-conduct-camera]').addEventListener('click', () => this.begin('camera'));
     $('[data-conduct-mouse]').addEventListener('click', () => this.begin('mouse'));
     $('[data-conduct-cut]').addEventListener('click', () => this.#cutoff());
+    $('[data-conduct-beat]')?.addEventListener('click', () => this.manualBeat());
     this.ui.reflectionToggle.addEventListener('click', () => {
       const hidden = this.ui.video.classList.toggle('is-hidden');
       this.ui.reflectionToggle.textContent = hidden ? 'Show camera' : 'Hide camera';
@@ -166,8 +167,24 @@ export class ConductMode {
 
   #frame(frame) {
     if (!this.active) return;
-    this.conductor.update(frame);
-    this.baton.show(frame.hands, frame.t);
+    const snap = this.conductor.update(frame);
+    this.baton.show(frame.hands, frame.t, {
+      fistProgress: snap.fistProgress,
+      state: this.state,
+      beats: this.beats,
+    });
+  }
+
+  manualBeat(strength = 0.6, pos = null) {
+    if (!this.active || this.state === 'intro' || this.state === 'off') return;
+    if (this.state === 'tuning' || this.state === 'cut' || this.state === 'bravo') {
+      this.#raise();
+    }
+    const stroke = 0.08 + strength * 0.16;
+    const x = pos?.x ?? this.conductor.x ?? 0.5;
+    const y = pos?.y ?? this.conductor.y ?? 0.6;
+    this.conductor.tapBeat(performance.now(), stroke, { x, y });
+    this.baton.setState(this.state, this.beats);
   }
 
   #bindPointer() {
@@ -178,8 +195,14 @@ export class ConductMode {
       return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, open: 1 };
     };
     stage.addEventListener('pointerdown', (e) => {
-      if (!this.active || this.source !== 'mouse' || this.state === 'intro') return;
+      if (!this.active || this.state === 'intro') return;
       if (e.target.closest('button, a, [data-readout] .chords')) return;
+      if (this.source === 'camera') {
+        const r = stage.getBoundingClientRect();
+        this.manualBeat(0.65, { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        return;
+      }
+      if (this.source !== 'mouse') return;
       e.preventDefault();
       try { stage.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
       down = e.pointerId;
@@ -207,6 +230,7 @@ export class ConductMode {
       this.orchestra.hush(this.engine.ctx.currentTime);
       this.#fadeBow();
       this.state = 'ready';
+      this.baton.setState(this.state, this.beats);
       this.#say('Orchestra', 'Ready.', `${PIECES[this.pieceId].label}, in ${this.score.key.name}. Beat down to begin.`);
       this.#status('Beat down to begin');
     }
@@ -267,6 +291,7 @@ export class ConductMode {
       this.#status('Cut off');
     }
     this.beats = 0;
+    this.baton.setState(this.state, 0);
   }
 
   // Between beats: follow the hands, and hold if the beats stop.
@@ -280,6 +305,7 @@ export class ConductMode {
         this.orchestra.hold(t);
         this.#status('Holding — beat to go on');
         this.#fadeBow();
+        this.baton.setState('holding', this.beats);
       } else {
         this.orchestra.express(snap.dynamic, snap.focus, t);
         this.#meters(snap.dynamic, snap.focus);

@@ -805,6 +805,26 @@ kbd {
   color: var(--ink-2);
   font-size: 13px;
 }
+.conduct-beat-btn {
+  background: rgba(214, 180, 112, 0.2);
+  border-color: rgba(237, 210, 154, 0.45);
+  color: var(--brass-bright);
+  font-weight: 500;
+  padding: 4px 14px;
+  box-shadow: 0 0 12px rgba(214, 180, 112, 0.15);
+  transition: all 120ms ease-out;
+  cursor: pointer;
+}
+.conduct-beat-btn:hover {
+  background: rgba(214, 180, 112, 0.32);
+  border-color: var(--brass-bright);
+  box-shadow: 0 0 18px rgba(237, 210, 154, 0.4);
+}
+.conduct-beat-btn:active {
+  transform: scale(0.93);
+  background: var(--brass-bright);
+  color: #120e0a;
+}
 
 .stage:has(.conduct-intro:not([hidden])) :is(.readout, .strings) { visibility: hidden; }
 

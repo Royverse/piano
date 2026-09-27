@@ -14,10 +14,13 @@ export const tempoMark = (bpm) => TEMPO_MARKS.find(([max]) => bpm < max)[1];
 const DYNAMICS = ['pp', 'p', 'mp', 'mf', 'f', 'ff'];
 export const dynamicMark = (level) => DYNAMICS[clamp(Math.floor(level * DYNAMICS.length), 0, DYNAMICS.length - 1)];
 
-const MIN_STROKE = 0.035; // shortest downstroke that counts as a beat
-const MIN_GAP = 200; // ms between beats (300 bpm)
-const DOWN = 0.4; // speed (screen heights per second) that starts a downstroke
-const TURN = 0.08; // …and the speed below which it has turned at the bottom
+// Forgiving, natural stroke recognition:
+// Slower downward movement is recognized as a conducting stroke (0.16 screen heights/s)
+// Short, gentle waves count as beats (0.022 screen height excursion)
+const MIN_STROKE = 0.022;
+const MIN_GAP = 180; // ms between beats (up to 330 bpm)
+const DOWN = 0.16; // speed that initiates a downward stroke
+const TURN = 0.04; // speed threshold where stroke bottoms out (ictus)
 
 export class Conductor {
   constructor(handlers = {}) {
@@ -38,8 +41,26 @@ export class Conductor {
     this.present = false;
     this.seenAt = -Infinity;
     this.fistSince = null;
+    this.fistProgress = 0;
     this.cut = false;
     this.last = null;
+  }
+
+  tapBeat(t = performance.now(), stroke = 0.16, pos = null) {
+    this.present = true;
+    this.cut = false;
+    this.lastStroke = stroke;
+    if (pos) {
+      this.x = pos.x;
+      this.y = pos.y;
+    }
+    const gap = t - this.lastBeat;
+    if (gap < 2400) {
+      const bpm = clamp(60000 / gap, 30, 240);
+      this.tempo = this.tempo ? this.tempo * 0.4 + bpm * 0.6 : bpm;
+    }
+    this.lastBeat = t;
+    this.handlers.beat?.({ x: this.x ?? 0.5, y: this.y ?? 0.6, stroke });
   }
 
   update({ t, hands }) {
@@ -81,28 +102,31 @@ export class Conductor {
     const speed = (this.y - before) / dt; // positive = moving down
     if (!this.cut) this.#watchBeat(t, speed);
 
-    // Loudness: the size of your beats, or the height of your other hand.
-    const fromStroke = clamp((this.lastStroke - 0.03) / 0.3, 0, 1);
+    // Loudness: size of downstrokes or elevation of shaping hand.
+    const fromStroke = clamp((this.lastStroke - 0.02) / 0.28, 0, 1);
     const fromHand = other ? clamp((0.88 - other.y) / 0.65, 0, 1) : null;
     const loud = fromHand == null ? fromStroke : 0.3 * fromStroke + 0.7 * fromHand;
     this.dynamic += (loud - this.dynamic) * (1 - Math.exp(-dt / 0.3));
 
-    // Facing a section: wherever the shaping hand (or the baton) points.
+    // Facing a section: pointing left features basses/cellos, right features violins.
     const facing = other ? other.x : this.x;
     this.focus += (facing - this.focus) * (1 - Math.exp(-dt / 0.25));
     return this.snapshot();
   }
 
   #watchFist(t, open) {
-    if (open < 0.28) {
+    if (open < 0.22) {
       this.fistSince ??= t;
-      if (!this.cut && t - this.fistSince > 160) {
+      const duration = t - this.fistSince;
+      this.fistProgress = clamp(duration / 380, 0, 1);
+      if (!this.cut && duration > 380) {
         this.cut = true;
         this.handlers.cutoff?.();
       }
     } else {
       this.fistSince = null;
-      if (open > 0.5) this.cut = false;
+      this.fistProgress = 0;
+      if (open > 0.45) this.cut = false;
     }
   }
 
@@ -113,11 +137,13 @@ export class Conductor {
       return;
     }
     if (speed > TURN) return;
-    // The stroke has bottomed out: that's the ictus, the moment of the beat.
+
+    // Stroke has bottomed out and is rebounding: the ictus!
     const stroke = this.y - this.top;
     this.phase = 'up';
     this.top = this.y;
     if (stroke < MIN_STROKE || t - this.lastBeat < MIN_GAP) return;
+
     const gap = t - this.lastBeat;
     if (gap < 2400) {
       const bpm = clamp(60000 / gap, 30, 240);
@@ -133,10 +159,12 @@ export class Conductor {
       present: this.present,
       x: this.x,
       y: this.y,
+      phase: this.phase,
       dynamic: this.dynamic,
       focus: this.focus,
       tempo: this.tempo,
       cut: this.cut,
+      fistProgress: this.fistProgress,
     };
   }
 }
