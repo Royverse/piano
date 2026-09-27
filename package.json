@@ -1,7 +1,12 @@
 {
   "name": "overtone",
   "version": "1.0.0",
-  "description": "A piano you can see inside: synthesized in the browser, with strings that show what you hear and a readout that names it.",
+  "description": "A piano you can see inside, and a string orchestra you conduct with your hands. Synthesised in the browser, no build step.",
+  "homepage": "https://royverse.github.io/piano/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Royverse/piano.git"
+  },
   "private": true,
   "type": "module",
   "scripts": {
