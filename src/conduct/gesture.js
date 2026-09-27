@@ -14,11 +14,11 @@ export const tempoMark = (bpm) => TEMPO_MARKS.find(([max]) => bpm < max)[1];
 const DYNAMICS = ['pp', 'p', 'mp', 'mf', 'f', 'ff'];
 export const dynamicMark = (level) => DYNAMICS[clamp(Math.floor(level * DYNAMICS.length), 0, DYNAMICS.length - 1)];
 
-// Forgiving, natural stroke recognition:
-// Slower downward movement is recognized as a conducting stroke (0.16 screen heights/s)
-// Short, gentle waves count as beats (0.022 screen height excursion)
-const MIN_STROKE = 0.022;
-const MIN_GAP = 180; // ms between beats (up to 330 bpm)
+// Musical stroke recognition:
+// Requires a clear downstroke (MIN_STROKE = 0.038) and realistic debounce (MIN_GAP = 260ms, up to 230 bpm)
+// preventing rapid accidental triggering.
+const MIN_STROKE = 0.038;
+const MIN_GAP = 260; // ms between beats (allows allegro/presto up to 230 bpm)
 const DOWN = 0.16; // speed that initiates a downward stroke
 const TURN = 0.04; // speed threshold where stroke bottoms out (ictus)
 
@@ -43,6 +43,7 @@ export class Conductor {
     this.fistSince = null;
     this.fistProgress = 0;
     this.cut = false;
+    this.gesture = 'ready';
     this.last = null;
   }
 
@@ -179,6 +180,13 @@ export class Conductor {
   }
 
   snapshot() {
+    let gesture = 'wave';
+    if (this.cut || this.fistProgress > 0.35) gesture = 'fist';
+    else if (!this.present) gesture = 'none';
+    else if (Math.abs(this.speed ?? 0) < 0.05 && performance.now() - this.lastBeat > 1400) gesture = 'hold';
+    else if (this.focus < 0.35) gesture = 'point_left';
+    else if (this.focus > 0.65) gesture = 'point_right';
+
     return {
       present: this.present,
       x: this.x,
@@ -189,6 +197,7 @@ export class Conductor {
       tempo: this.tempo,
       cut: this.cut,
       fistProgress: this.fistProgress,
+      gesture,
     };
   }
 }

@@ -68,6 +68,7 @@
       <div class="conduct-bar" data-conduct-bar hidden>
         <span class="conduct-source" data-conduct-source>Camera</span>
         <span class="conduct-status" data-conduct-status role="status"></span>
+        <button type="button" class="take-button conduct-guide-btn" popovertarget="gesture-guide" title="View 3D animated hand gestures guide">✋ Gesture Guide</button>
         <button type="button" class="take-button conduct-beat-btn" data-conduct-beat title="Strike beat (Space, ↓, or tap)">♩ Beat</button>
         <button type="button" class="take-button" data-conduct-cut title="Cut off (Esc)">Cut off</button>
         <button type="button" class="take-button" data-reflection-toggle>Hide camera</button>
@@ -80,7 +81,7 @@
           <div class="readout-intro">
             <p class="readout-headline">The lid is open.</p>
             <p class="readout-lede">Play a note and watch its strings. Each one gets its name here, and on the staff.</p>
-            <p class="readout-how only-keys">Play with <kbd>A</kbd> to <kbd>'</kbd> on your keyboard, or click the keys.</p>
+            <p class="readout-how only-keys">Play with computer keys <kbd>A</kbd> to <kbd>'</kbd>, or click any key below.</p>
             <p class="readout-how only-touch">Tap the keys, or drag across them.</p>
           </div>
 
@@ -100,7 +101,7 @@
 
       <section class="conduct-intro" data-conduct-intro hidden aria-labelledby="conduct-title">
         <h2 class="conduct-title" id="conduct-title">Conduct the orchestra</h2>
-        <p class="conduct-lede">A string orchestra is waiting on your podium. The music advances only when you beat.</p>
+        <p class="conduct-lede">A string orchestra is waiting on your podium. The music advances with your baton.</p>
         <ol class="conduct-steps">
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 33V9"/><path d="M13 16l7-7 7 7"/></svg>
@@ -122,6 +123,7 @@
         <div class="conduct-actions">
           <button type="button" class="button button-primary" data-conduct-camera>Use my camera</button>
           <button type="button" class="button" data-conduct-mouse><span class="only-keys">Use my mouse</span><span class="only-touch">Use touch</span></button>
+          <button type="button" class="button button-outline" popovertarget="gesture-guide">✋ 3D Gesture Guide</button>
         </div>
         <p class="conduct-note">Hand tracking runs privately in your browser with zero camera video ever leaving your device. Instant CPU neural engine.</p>
         <p class="conduct-error" data-conduct-error role="alert"></p>
@@ -229,6 +231,30 @@
       <p class="field-label">MIDI keyboard</p>
       <p class="field-note" data-midi-text>Plug in a keyboard to play with its touch and sustain pedal.</p>
       <button type="button" class="button" data-midi-connect>Connect</button>
+    </div>
+  </div>
+
+  <div popover id="gesture-guide" class="panel gesture-panel" aria-labelledby="gesture-panel-title">
+    <div class="gesture-header">
+      <h2 class="panel-title" id="gesture-panel-title">Conductor Gestures</h2>
+      <span class="gesture-status-pill" data-gesture-live-text>Ready</span>
+    </div>
+    <p class="panel-text">Interactive 3D animated model demonstrating the 4 core orchestral gestures.</p>
+
+    <div class="gesture-tabs" role="tablist" aria-label="Conductor gesture demonstrations">
+      <button type="button" class="gesture-tab is-active" data-gesture-tab="wave">♩ 4/4 Beat</button>
+      <button type="button" class="gesture-tab" data-gesture-tab="dynamics">Dynamics</button>
+      <button type="button" class="gesture-tab" data-gesture-tab="cue">Section Cue</button>
+      <button type="button" class="gesture-tab" data-gesture-tab="cutoff">🛑 Cut-off</button>
+    </div>
+
+    <div class="gesture-viewport">
+      <canvas class="gesture-canvas" data-gesture-canvas width="320" height="260" aria-label="3D animated hand gesture demonstration"></canvas>
+    </div>
+
+    <div class="gesture-desc" data-gesture-desc>
+      <b>Wave in 4/4 meter</b>
+      <p>Move your hand down on beat 1, left on 2, right on 3, up on 4. Your cadence sets the tempo (BPM).</p>
     </div>
   </div>
 

@@ -7,6 +7,7 @@ import { Conductor, tempoMark, dynamicMark } from './gesture.js';
 import { Score, PIECES, SECTIONS } from './score.js';
 import { startHands, warmHands, cameraProblem } from './hands.js';
 import { BatonView } from './baton.js';
+import { HandModel } from './hand-model.js';
 import { analyze, mod12, noteName, noteLabel, spellInKey } from '../theory.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -48,6 +49,7 @@ export class ConductMode {
       const hidden = this.ui.video.classList.toggle('is-hidden');
       this.ui.reflectionToggle.textContent = hidden ? 'Show camera' : 'Hide camera';
     });
+    this.#setupGestureGuide();
     this.#bindPointer();
   }
 
@@ -165,6 +167,51 @@ export class ConductMode {
 
   /* ----------------------------------------------------------- input */
 
+  #setupGestureGuide() {
+    const guideCanvas = $('[data-gesture-canvas]');
+    if (!guideCanvas) return;
+    this.handModel = new HandModel(guideCanvas);
+    const guidePanel = $('#gesture-guide');
+    guidePanel?.addEventListener('toggle', (e) => {
+      if (e.newState === 'open') {
+        this.handModel.start();
+      } else {
+        this.handModel.stop();
+      }
+    });
+
+    const descs = {
+      wave: {
+        title: 'Wave in 4/4 meter',
+        text: 'Move your hand down on beat 1, left on 2, right on 3, up on 4. Your cadence sets the tempo (BPM).'
+      },
+      dynamics: {
+        title: 'Swell & Soften',
+        text: 'Make large, expansive gestures to swell into Forte (loud). Keep gestures small and compact for Piano (soft).'
+      },
+      cue: {
+        title: 'Direct Sections',
+        text: 'Point or lean left towards the Cellos & Basses, or right towards the Violins, to feature their melodies.'
+      },
+      cutoff: {
+        title: 'Clench to Stop',
+        text: 'Close your hand into a fist to cut off the orchestra. You can also press Esc or click Cut off anytime.'
+      }
+    };
+    const descEl = $('[data-gesture-desc]');
+    document.querySelectorAll('[data-gesture-tab]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-gesture-tab]').forEach((t) => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        const mode = tab.dataset.gestureTab;
+        this.handModel.setMode(mode);
+        if (descEl && descs[mode]) {
+          descEl.innerHTML = `<b>${descs[mode].title}</b><p>${descs[mode].text}</p>`;
+        }
+      });
+    });
+  }
+
   #frame(frame) {
     if (!this.active) return;
     const snap = this.conductor.update(frame);
@@ -173,6 +220,19 @@ export class ConductMode {
       state: this.state,
       beats: this.beats,
     });
+
+    const liveText = $('[data-gesture-live-text]');
+    if (liveText) {
+      if (snap.cut || snap.fistProgress > 0.3) {
+        liveText.textContent = '🛑 Cut-Off (Fist Closed)';
+      } else if (snap.gesture === 'hold') {
+        liveText.textContent = '✋ Holding (Fermata)';
+      } else if (snap.tempo) {
+        liveText.textContent = `♩ Waving (${Math.round(snap.tempo)} BPM · ${tempoMark(snap.tempo)})`;
+      } else if (snap.present) {
+        liveText.textContent = '✋ Hand Tracked · Ready';
+      }
+    }
   }
 
   manualBeat(strength = 0.6, pos = null) {
@@ -238,6 +298,9 @@ export class ConductMode {
 
   #beat(b) {
     if (!this.active || this.state === 'intro' || this.state === 'off') return;
+    const now = performance.now();
+    if (this.lastBeatAt && now - this.lastBeatAt < Math.max(260, this.beatMs * 0.65)) return;
+
     const t = this.engine.ctx.currentTime + 0.005;
     if (this.state === 'tuning') this.orchestra.hush(t);
     this.orchestra.start();
@@ -254,7 +317,7 @@ export class ConductMode {
     this.orchestra.play(plan, t, { dynamic, focus: snap.focus, strength, beatSeconds });
 
     this.state = 'playing';
-    this.lastBeatAt = performance.now();
+    this.lastBeatAt = now;
     this.beatMs = beatSeconds * 1000;
     this.beats += 1;
     this.recent = [...this.recent, dynamic].slice(-8);
@@ -266,7 +329,7 @@ export class ConductMode {
     this.baton.beat({ x: b.x, y: b.y }, strength);
     this.#meters(dynamic, snap.focus);
     this.#readout(plan, snap);
-    this.#status(`Bar ${plan.bar}`);
+    this.#status(`Bar ${plan.bar} · Beat ${plan.beatInBar}${snap.tempo ? ` · ${Math.round(snap.tempo)} BPM` : ''}`);
   }
 
   #cutoff() {

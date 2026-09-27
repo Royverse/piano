@@ -769,10 +769,13 @@ ui.help.addEventListener('click', (e) => e.target === ui.help && ui.help.close()
 for (const panel of $$('[popover]')) {
   panel.addEventListener('beforetoggle', (e) => {
     if (e.newState !== 'open') return;
-    const button = $(`[popovertarget="${panel.id}"]`);
+    const button = document.activeElement?.closest(`[popovertarget="${panel.id}"]`) || $(`[popovertarget="${panel.id}"]`);
+    if (!button) return;
     const r = button.getBoundingClientRect();
-    const width = Math.min(380, window.innerWidth - 32);
-    panel.style.top = `${r.bottom + 10}px`;
+    const width = Math.min(panel.offsetWidth || 380, window.innerWidth - 32);
+    const panelHeight = panel.offsetHeight || 380;
+    const top = Math.min(Math.max(16, r.bottom + 10), Math.max(16, window.innerHeight - panelHeight - 16));
+    panel.style.top = `${top}px`;
     panel.style.left = `${clamp(r.right - width, 16, window.innerWidth - width - 16)}px`;
   });
 }

@@ -259,8 +259,57 @@ export class BatonView {
       ctx.restore();
     }
 
+    // Active 4/4 Beat Indicator
+    if (this.beats > 0 && this.state === 'playing') {
+      const beatNum = ((this.beats - 1) % 4) + 1; // 1, 2, 3, 4
+      const cx = w - 60;
+      const cy = 48;
+      const r = 18;
+
+      ctx.save();
+      const nodes = [
+        { b: 1, x: cx, y: cy + r },
+        { b: 2, x: cx - r, y: cy },
+        { b: 3, x: cx + r, y: cy },
+        { b: 4, x: cx, y: cy - r },
+      ];
+
+      // Connecting diamond
+      ctx.strokeStyle = 'rgba(237, 210, 154, 0.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(nodes[3].x, nodes[3].y);
+      ctx.lineTo(nodes[0].x, nodes[0].y);
+      ctx.lineTo(nodes[1].x, nodes[1].y);
+      ctx.lineTo(nodes[2].x, nodes[2].y);
+      ctx.lineTo(nodes[3].x, nodes[3].y);
+      ctx.stroke();
+
+      for (const node of nodes) {
+        const isActive = node.b === beatNum;
+        ctx.fillStyle = isActive ? 'rgba(255, 235, 180, 0.95)' : 'rgba(214, 180, 112, 0.35)';
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, isActive ? 5.5 : 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (isActive) {
+          ctx.strokeStyle = 'rgba(255, 235, 180, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 9.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = 'rgba(237, 210, 154, 0.85)';
+      ctx.font = '500 11px "Jost", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Beat ${beatNum}/4`, cx, cy + r + 16);
+      ctx.restore();
+    }
+
     const needsNext = this.trail.length || this.ripples.length || this.sparks.length ||
-      this.hands.length || this.beats === 0 || this.state === 'holding';
+      this.hands.length || this.beats === 0 || this.state === 'holding' || this.state === 'playing';
     if (needsNext) requestAnimationFrame(this.frame);
     else this.running = false;
   }
