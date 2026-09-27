@@ -1,5 +1,5 @@
-// Interactive articulated hand model for demonstrating conductor gestures.
-// Renders 21 anatomical landmarks and conductor baton with smooth 60fps animations.
+// The gesture guide: an animated hand (the same 21 landmarks MediaPipe
+// tracks) demonstrating each conducting gesture in a loop.
 
 import { BONES } from './hands.js';
 
@@ -148,19 +148,18 @@ export class HandModel {
 
     // Calculate pose depending on mode
     if (this.mode === 'wave') {
-      // Natural fluid wave animation with harmonic oscillation
+      // The beat the camera listens for: rise, then fall into the beat and rebound.
       showBaton = true;
-      const period = 1.4;
-      const tNorm = (time % period) / period;
-      const dx = Math.sin(tNorm * Math.PI * 2) * 0.22;
-      const dy = Math.sin(tNorm * Math.PI * 4) * 0.08 + Math.cos(tNorm * Math.PI * 2) * 0.06;
-      handPos.x = w * 0.5 + dx * w * 0.65;
-      handPos.y = h * 0.54 + dy * h * 0.5;
-      handRot = dx * 0.75;
-      beatLabel = '♩ Natural Flow · Wave fluidly to set tempo';
+      const period = 0.8;
+      const phase = (time % period) / period;
+      const depth = phase < 0.72 ? 1 - phase / 0.72 : (phase - 0.72) / 0.28; // 1 = bottom of the beat
+      handPos.x = w * 0.5 + Math.sin(time * 0.9) * w * 0.05;
+      handPos.y = h * 0.42 + depth ** 2 * h * 0.2;
+      handRot = -0.12 + depth * 0.18;
+      beatLabel = 'Down into each beat, then up again';
 
-      // Gentle beat ripple at lowest dip
-      const isNadir = (tNorm > 0.22 && tNorm < 0.28) || (tNorm > 0.72 && tNorm < 0.78);
+      // A ripple as the baton lands on the beat
+      const isNadir = phase < 0.06 || phase > 0.97;
       if (isNadir && (!this.lastRip || now - this.lastRip > 450)) {
         this.lastRip = now;
         this.ripples.push({
@@ -182,11 +181,11 @@ export class HandModel {
       handPos.x = w * 0.54;
 
       if (p > 0.7) {
-        beatLabel = 'ff Forte · Hand Raised High (Loud Strings)';
+        beatLabel = 'Hand high · forte';
       } else if (p < 0.3) {
-        beatLabel = 'p Piano · Hand Lowered Near Desk (Soft)';
+        beatLabel = 'Hand low · piano';
       } else {
-        beatLabel = 'mf Mezzo · Medium Dynamic Expression';
+        beatLabel = 'In between · mezzo-forte';
       }
     } else if (this.mode === 'pinch') {
       // Pinch = Pluck (Pizzicato)
@@ -194,13 +193,13 @@ export class HandModel {
       const cycle = time % 2.8;
       if (cycle < 1.1) {
         pinchAmount = 0;
-        beatLabel = '🖐️ Open Hand · Arco (Bowed Strings)';
+        beatLabel = 'Open hand · arco, bowed';
       } else if (cycle < 1.35) {
         pinchAmount = Math.min(1, (cycle - 1.1) / 0.25);
-        beatLabel = '👌 Pinching Thumb & Index Finger…';
+        beatLabel = 'Thumb meets index finger…';
       } else if (cycle < 2.3) {
         pinchAmount = 1;
-        beatLabel = '✨ Pinch · Pizzicato (Plucked Strings!)';
+        beatLabel = 'Pinched · pizz., plucked';
         if (!this.lastPluck || now - this.lastPluck > 1800) {
           this.lastPluck = now;
           this.ripples.push({
@@ -213,7 +212,7 @@ export class HandModel {
         }
       } else {
         pinchAmount = 1 - (cycle - 2.3) / 0.5;
-        beatLabel = 'Release to Bow Again';
+        beatLabel = 'Open again for arco';
       }
     } else if (this.mode === 'cutoff') {
       // Open hand then clench into fist
@@ -221,16 +220,16 @@ export class HandModel {
       const cycle = time % 3.0;
       if (cycle < 1.2) {
         curl = 0;
-        beatLabel = '🖐️ Open Hand (Playing)';
+        beatLabel = 'Open hand · playing';
       } else if (cycle < 1.6) {
         curl = Math.min(1, (cycle - 1.2) / 0.4);
-        beatLabel = '✊ Clench Fist (Cut off)';
+        beatLabel = 'Close your hand…';
       } else if (cycle < 2.4) {
         curl = 1;
-        beatLabel = '🛑 Clenched Fist · Silence Orchestra';
+        beatLabel = 'Fist · everyone stops';
       } else {
         curl = 1 - (cycle - 2.4) / 0.6;
-        beatLabel = 'Release to Begin Again';
+        beatLabel = 'Open to begin again';
       }
     }
 

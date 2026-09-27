@@ -261,8 +261,14 @@ function homeRange() {
 
 const isTyping = (el) => el?.matches?.('select, textarea, input:not([type=radio]):not([type=checkbox]):not([type=range])');
 
+// Is a panel (Key, Sound, Gestures) open? Then Esc belongs to it.
+const panelOpen = () => {
+  try { return !!document.querySelector(':popover-open'); } catch { return false; }
+};
+
 document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+  if (e.code === 'Escape' && panelOpen()) return;
   if (e.key === '?' || (e.code === 'Slash' && e.shiftKey)) {
     e.preventDefault();
     toggleHelp();
@@ -272,7 +278,7 @@ document.addEventListener('keydown', (e) => {
 
   if (conduct.active && conduct.state !== 'intro') {
     if (e.code === 'Space' || e.code === 'ArrowDown') {
-      if (document.activeElement && document.activeElement !== document.body && !document.activeElement.matches?.('[data-conduct-beat]')) return;
+      if (document.activeElement && document.activeElement !== document.body) return;
       e.preventDefault();
       conduct.manualBeat();
       return;
@@ -765,19 +771,29 @@ ui.help.addEventListener('click', (e) => e.target === ui.help && ui.help.close()
 
 /* ------------------------------------------------------------- popovers */
 
-// Place each panel under the button that opened it.
+// Place each panel under the button that opened it (or, if that button
+// isn't visible, in the middle of the window), then keep it on screen.
+function placePanel(panel) {
+  const invoker = document.activeElement?.closest?.(`[popovertarget="${panel.id}"]`)
+    ?? $$(`[popovertarget="${panel.id}"]`).find((b) => b.offsetParent !== null);
+  const width = panel.offsetWidth || Math.min(380, window.innerWidth - 32);
+  const height = panel.offsetHeight || 380;
+  let top;
+  let left;
+  if (invoker) {
+    const r = invoker.getBoundingClientRect();
+    top = r.bottom + 10;
+    left = r.right - width;
+  } else {
+    top = (window.innerHeight - height) / 2;
+    left = (window.innerWidth - width) / 2;
+  }
+  panel.style.top = `${clamp(top, 16, Math.max(16, window.innerHeight - height - 16))}px`;
+  panel.style.left = `${clamp(left, 16, Math.max(16, window.innerWidth - width - 16))}px`;
+}
 for (const panel of $$('[popover]')) {
-  panel.addEventListener('beforetoggle', (e) => {
-    if (e.newState !== 'open') return;
-    const button = document.activeElement?.closest(`[popovertarget="${panel.id}"]`) || $(`[popovertarget="${panel.id}"]`);
-    if (!button) return;
-    const r = button.getBoundingClientRect();
-    const width = Math.min(panel.offsetWidth || 380, window.innerWidth - 32);
-    const panelHeight = panel.offsetHeight || 380;
-    const top = Math.min(Math.max(16, r.bottom + 10), Math.max(16, window.innerHeight - panelHeight - 16));
-    panel.style.top = `${top}px`;
-    panel.style.left = `${clamp(r.right - width, 16, window.innerWidth - width - 16)}px`;
-  });
+  panel.addEventListener('beforetoggle', (e) => e.newState === 'open' && placePanel(panel));
+  panel.addEventListener('toggle', (e) => e.newState === 'open' && placePanel(panel));
 }
 
 /* ---------------------------------------------------------------- toast */
@@ -843,5 +859,5 @@ updateReadout();
 setTakeState('idle');
 loadSharedTake();
 
-// For poking at the sound from the browser console: (await import('./src/main.js')).engine
-export { engine };
+// For poking around from the browser console: (await import('./src/main.js')).engine
+export { engine, conduct };

@@ -133,6 +133,7 @@ class Section {
 
   shape(level, brightness, t, tau = 0.12) {
     this.level = level;
+    this.plucked = false;
     this.amp.gain.setTargetAtTime(level, t, tau);
     this.tone.frequency.setTargetAtTime(brightness, t, tau);
     this.hiss.gain.setTargetAtTime(level * 0.06, t, tau);
@@ -141,6 +142,7 @@ class Section {
   /** A bow stroke on the beat: a quick bite, then the sustained tone. */
   accent(level, brightness, t, strength) {
     this.level = level;
+    this.plucked = false;
     this.amp.gain.cancelScheduledValues(t);
     this.amp.gain.setTargetAtTime(level * (1 + strength), t, 0.012);
     this.amp.gain.setTargetAtTime(level, t + 0.07, 0.18);
@@ -150,9 +152,10 @@ class Section {
     this.hiss.gain.setTargetAtTime(level * 0.06, t + 0.08, 0.2);
   }
 
-  /** A crisp pizzicato (plucked string) articulation. */
+  /** Pizzicato: the string plucked, a bright snap dying away within half a second. */
   pizz(level, brightness, t, strength = 0.5) {
     this.level = level;
+    this.plucked = true;
     this.amp.gain.cancelScheduledValues(t);
     const peak = Math.max(0.002, level * (1.3 + strength * 0.7));
     this.amp.gain.setValueAtTime(peak, t);
@@ -222,7 +225,7 @@ export class Orchestra {
       const s = this.sections[id];
       const midi = plan.notes[id];
       const changed = midi !== s.midi;
-      const wasSounding = s.level > 0.004;
+      const wasSounding = !s.plucked && s.level > 0.004;
       if (changed) s.note(midi, t, { legato: !pizzicato && wasSounding && Math.abs(midi - (s.midi ?? midi)) <= 9 });
       const level = sectionLevel(id, dynamic, focus);
       const bright = this.#brightness(id, dynamic, midi);
@@ -245,7 +248,7 @@ export class Orchestra {
     if (!this.sections) return;
     for (const id of SECTIONS) {
       const s = this.sections[id];
-      if (s.midi == null || s.level < 0.002) continue;
+      if (s.midi == null || s.plucked || s.level < 0.002) continue;
       s.shape(sectionLevel(id, dynamic, focus), this.#brightness(id, dynamic, s.midi), t, 0.2);
     }
   }
@@ -253,7 +256,7 @@ export class Orchestra {
   /** No beat coming: hold the chord and let it slowly die away (a fermata). */
   hold(t) {
     if (!this.sections) return;
-    for (const s of Object.values(this.sections)) s.shape(s.level * 0.25, 900, t, 2.4);
+    for (const s of Object.values(this.sections)) if (!s.plucked) s.shape(s.level * 0.25, 900, t, 2.4);
   }
 
   /** The cut-off: every section stops together. */

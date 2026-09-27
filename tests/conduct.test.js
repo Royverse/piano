@@ -189,4 +189,14 @@ test('HandStabilizer tracks hand identity and smooths coordinates', () => {
   assert.equal(s2[0].id, initialId, 'Hand ID should remain consistent across frames');
 });
 
-
+test('a still hand holds (fermata); a drifting one keeps the music going', () => {
+  const still = new Conductor();
+  const drifting = new Conductor();
+  for (let i = 0; i < 90; i++) {
+    const t = i * 33;
+    still.update({ t, hands: [{ x: 0.5, y: 0.5, open: 1 }] });
+    drifting.update({ t, hands: [{ x: 0.5 + 0.12 * Math.sin(t / 400), y: 0.5, open: 1 }] });
+  }
+  assert.equal(still.snapshot().gesture, 'hold');
+  assert.notEqual(drifting.snapshot().gesture, 'hold');
+});

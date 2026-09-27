@@ -4,11 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Overtone — a piano you can see inside</title>
-  <meta name="description" content="Play a piano in your browser and watch its strings move. Every note, interval and chord is named and written on the staff as you play. Works with your computer keyboard, touch or a MIDI keyboard.">
+  <meta name="description" content="Play a piano in your browser and watch its strings move, with every note, interval and chord named as you play. Then conduct a string orchestra with your hands through your webcam.">
   <meta name="theme-color" content="#0f0c0a">
-  <meta property="og:title" content="Overtone">
-  <meta property="og:description" content="A piano you can see inside. Play, watch the strings, and see every chord named as you play it.">
+  <link rel="canonical" href="https://royverse.github.io/piano/">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://royverse.github.io/piano/">
+  <meta property="og:title" content="Overtone — a piano you can see inside">
+  <meta property="og:description" content="Play, watch the strings, and see every chord named as you play it. Then conduct a string orchestra with your hands.">
+  <meta property="og:image" content="https://royverse.github.io/piano/docs/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Overtone: a piano keyboard under an open lid, its strings glowing, with the chord C major seventh named and written on a staff.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,8 +75,7 @@
       <div class="conduct-bar" data-conduct-bar hidden>
         <span class="conduct-source" data-conduct-source>Camera</span>
         <span class="conduct-status" data-conduct-status role="status"></span>
-        <button type="button" class="take-button conduct-guide-btn" popovertarget="gesture-guide" title="View 3D animated hand gestures guide">✋ Gesture Guide</button>
-        <button type="button" class="take-button conduct-beat-btn" data-conduct-beat title="Strike beat (Space, ↓, or tap)">♩ Beat</button>
+        <button type="button" class="take-button" popovertarget="gesture-guide">Gestures</button>
         <button type="button" class="take-button" data-conduct-cut title="Cut off (Esc)">Cut off</button>
         <button type="button" class="take-button" data-reflection-toggle>Hide camera</button>
       </div>
@@ -81,7 +87,7 @@
           <div class="readout-intro">
             <p class="readout-headline">The lid is open.</p>
             <p class="readout-lede">Play a note and watch its strings. Each one gets its name here, and on the staff.</p>
-            <p class="readout-how only-keys">Play with computer keys <kbd>A</kbd> to <kbd>'</kbd>, or click any key below.</p>
+            <p class="readout-how only-keys">Play with <kbd>A</kbd> to <kbd>'</kbd> on your keyboard, or click the keys below.</p>
             <p class="readout-how only-touch">Tap the keys, or drag across them.</p>
           </div>
 
@@ -101,31 +107,31 @@
 
       <section class="conduct-intro" data-conduct-intro hidden aria-labelledby="conduct-title">
         <h2 class="conduct-title" id="conduct-title">Conduct the orchestra</h2>
-        <p class="conduct-lede">A string orchestra is waiting on your podium. The music advances with your baton.</p>
+        <p class="conduct-lede">A string orchestra is tuning up. It plays when you conduct, at the tempo you set.</p>
         <ol class="conduct-steps">
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 33V9"/><path d="M13 16l7-7 7 7"/></svg>
-            <b>1. Wave to set tempo</b>
-            <span>Move your hand naturally to flow through the music. Wave faster for allegro, or slower for a gentle andante. Use both hands together!</span>
+            <b>Raise your hand</b>
+            <span>The tuning stops and they wait for you.</span>
           </li>
           <li>
-            <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 6v28M12 14l8-8 8 8M12 26l8 8 8-8"/></svg>
-            <b>2. Hand height = volume</b>
-            <span>Raise hand high for Forte (loud strings); lower near desk for Piano (soft). Pinch thumb & index for Pizzicato (plucked strings)!</span>
+            <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 8c5 17 9 24 12 24s7-7 12-22"/><circle cx="20" cy="32" r="2.6"/></svg>
+            <b>Beat time</b>
+            <span>Drop your hand into each beat and let it bounce up. They follow your tempo, and play louder as you raise your hand.</span>
           </li>
           <li>
             <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="8"/><path d="M6 20h4M30 20h4"/></svg>
-            <b>3. Clench fist to cut off</b>
-            <span>Close either hand into a fist to stop the orchestra. Or hold still in the air for a suspended fermata.</span>
+            <b>Close your hand</b>
+            <span>A fist stops everyone together. Finish big, and listen.</span>
           </li>
         </ol>
-        <p class="conduct-more">You can also tap anywhere on stage, click the <b>♩ Beat</b> button, or tap <kbd>Space</kbd> / <kbd>↓</kbd> to strike beats directly.</p>
+        <p class="conduct-more">Pinch thumb and finger for <i>pizzicato</i>, point left or right to bring in the low strings or the violins, and raise both hands for a <i>tutti</i> swell. No camera? Drag or tap on the stage<span class="only-keys">, or press <kbd>Space</kbd></span> on each beat.</p>
         <div class="conduct-actions">
           <button type="button" class="button button-primary" data-conduct-camera>Use my camera</button>
           <button type="button" class="button" data-conduct-mouse><span class="only-keys">Use my mouse</span><span class="only-touch">Use touch</span></button>
-          <button type="button" class="button button-outline" popovertarget="gesture-guide">✋ 3D Gesture Guide</button>
+          <button type="button" class="button button-quiet" popovertarget="gesture-guide">Watch the gestures</button>
         </div>
-        <p class="conduct-note">Hand tracking runs privately in your browser with zero camera video ever leaving your device. Instant CPU neural engine.</p>
+        <p class="conduct-note">Hand tracking runs in your browser. The camera image never leaves your device.</p>
         <p class="conduct-error" data-conduct-error role="alert"></p>
       </section>
     </main>
@@ -236,25 +242,25 @@
 
   <div popover id="gesture-guide" class="panel gesture-panel" aria-labelledby="gesture-panel-title">
     <div class="gesture-header">
-      <h2 class="panel-title" id="gesture-panel-title">Conductor Gestures</h2>
-      <span class="gesture-status-pill" data-gesture-live-text>Ready</span>
+      <h2 class="panel-title" id="gesture-panel-title">Gestures</h2>
+      <span class="gesture-status-pill" data-gesture-live-text title="What the camera sees right now">No hand in view</span>
     </div>
-    <p class="panel-text">Interactive 3D animated model demonstrating the 4 core orchestral gestures.</p>
+    <p class="panel-text">Watch each one, then try it in front of the camera.</p>
 
-    <div class="gesture-tabs" role="tablist" aria-label="Conductor gesture demonstrations">
-      <button type="button" class="gesture-tab is-active" data-gesture-tab="wave">♩ Flow</button>
-      <button type="button" class="gesture-tab" data-gesture-tab="dynamics">↕️ Height</button>
-      <button type="button" class="gesture-tab" data-gesture-tab="pinch">👌 Pinch</button>
-      <button type="button" class="gesture-tab" data-gesture-tab="cutoff">🛑 Cut-off</button>
+    <div class="gesture-tabs" role="tablist" aria-label="Gestures">
+      <button type="button" class="gesture-tab" role="tab" aria-selected="true" data-gesture-tab="wave">Beat</button>
+      <button type="button" class="gesture-tab" role="tab" aria-selected="false" data-gesture-tab="dynamics">Height</button>
+      <button type="button" class="gesture-tab" role="tab" aria-selected="false" data-gesture-tab="pinch">Pinch</button>
+      <button type="button" class="gesture-tab" role="tab" aria-selected="false" data-gesture-tab="cutoff">Stop</button>
     </div>
 
     <div class="gesture-viewport">
-      <canvas class="gesture-canvas" data-gesture-canvas width="320" height="260" aria-label="3D animated hand gesture demonstration"></canvas>
+      <canvas class="gesture-canvas" data-gesture-canvas width="320" height="260" aria-hidden="true"></canvas>
     </div>
 
-    <div class="gesture-desc" data-gesture-desc>
-      <b>Natural Flow & Tempo</b>
-      <p>Wave your hand in a natural cadence to conduct the flow. Wave faster for Allegro, or slower for a peaceful Andante. Both hands work together!</p>
+    <div class="gesture-desc" data-gesture-desc aria-live="polite">
+      <b>Beat time</b>
+      <p>Move your hand down into each beat and let it bounce back up. The orchestra plays on every beat and follows your tempo — faster for allegro, slower for adagio.</p>
     </div>
   </div>
 
@@ -297,7 +303,8 @@
 
       <section class="help-section help-wide">
         <h3>Conduct</h3>
-        <p>Choose <em>Conduct</em> and a string orchestra tunes up. With the camera, raise your hand to quiet them, then beat down in the air. Every beat plays the next beat of the music. Your pace is the tempo, the size of your beat is the volume, and pointing left or right brings the low strings or the violins forward. Raise your second hand to swell; close your hand to cut them off. No camera? Press and drag down on the stage with your mouse or finger, and press <kbd>Esc</kbd> to cut off.</p>
+        <p>Choose <em>Conduct</em> and a string orchestra tunes up. With the camera, raise your hand to quiet them, then beat time in the air. Your first beat starts the music; after that they keep flowing at your tempo while you conduct, and every beat you give keeps them in step. Hold still for a fermata.</p>
+        <p>The higher your hand, the louder they play. Point left or right to bring the low strings or the violins forward, raise both hands for a <i>tutti</i> swell, pinch thumb and finger for <i>pizzicato</i>, and close your hand to cut them off. No camera? Drag or tap on the stage, or press <kbd>Space</kbd> on each beat and <kbd>Esc</kbd> to cut off.</p>
         <p>Pick what they play at the top: a <em>Canon</em> after Pachelbel, a <em>Lament</em>, an <em>Anthem</em>, a <em>Nocturne</em>, or <em>Your chords</em>, which follows whatever you hold on the piano.</p>
       </section>
 

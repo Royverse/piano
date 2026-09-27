@@ -78,10 +78,11 @@ kbd {
 }
 
 /* Touch devices get touch instructions; keyboards get keyboard ones. */
-.only-touch { display: none; }
+@media not ((hover: none) and (pointer: coarse)) {
+  .only-touch { display: none !important; }
+}
 @media (hover: none) and (pointer: coarse) {
   .only-keys { display: none !important; }
-  .only-touch { display: revert; }
 }
 
 /* ------------------------------------------------------------ frame */
@@ -266,28 +267,15 @@ kbd {
   font-size: 16px;
 }
 .readout-how {
-  margin-top: 16px;
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(214, 180, 112, 0.12);
-  border: 1px solid rgba(237, 210, 154, 0.28);
+  margin-top: 18px;
   color: var(--ink);
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 14px;
 }
 .readout-how kbd {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(237, 210, 154, 0.35);
+  border-color: rgba(237, 210, 154, 0.35);
+  background: rgba(214, 180, 112, 0.14);
   color: var(--brass-bright);
-  font: 600 12px/1 var(--font-ui);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
 }
 
 .readout-eyebrow {
@@ -838,40 +826,6 @@ kbd {
   color: var(--ink-2);
   font-size: 13px;
 }
-.conduct-beat-btn {
-  background: rgba(214, 180, 112, 0.2);
-  border-color: rgba(237, 210, 154, 0.45);
-  color: var(--brass-bright);
-  font-weight: 500;
-  padding: 4px 14px;
-  box-shadow: 0 0 12px rgba(214, 180, 112, 0.15);
-  transition: all 120ms ease-out;
-  cursor: pointer;
-}
-.conduct-beat-btn:hover {
-  background: rgba(214, 180, 112, 0.32);
-  border-color: var(--brass-bright);
-  box-shadow: 0 0 18px rgba(237, 210, 154, 0.4);
-}
-.conduct-beat-btn:active {
-  transform: scale(0.93);
-  background: var(--brass-bright);
-  color: #120e0a;
-}
-.conduct-guide-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--line);
-  color: var(--ink-2);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 140ms ease-out;
-}
-.conduct-guide-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--brass);
-  color: var(--brass-bright);
-}
-
 .stage:has(.conduct-intro:not([hidden])) :is(.readout, .strings) { visibility: hidden; }
 
 .conduct-intro {
@@ -879,11 +833,11 @@ kbd {
   left: 50%;
   top: 50%;
   z-index: 5;
-  width: min(640px, calc(100% - 32px));
-  max-height: calc(100% - 24px);
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100% - 20px);
   overflow: auto;
   transform: translate(-50%, -50%);
-  padding: 30px 32px 26px;
+  padding: 24px 30px 20px;
   border: 1px solid var(--line-strong);
   border-radius: 22px;
   background: rgba(21, 16, 12, 0.97);
@@ -891,16 +845,16 @@ kbd {
 }
 .conduct-title {
   margin: 0;
-  font: italic 400 clamp(30px, 3.2vw, 42px)/1.05 var(--font-display);
+  font: italic 400 clamp(28px, 3vw, 38px)/1.05 var(--font-display);
 }
-.conduct-lede { margin-top: 8px; color: var(--ink-2); font-size: 15px; }
+.conduct-lede { margin-top: 6px; color: var(--ink-2); font-size: 14px; }
 
 /* Numbered because it is a sequence: raise, beat, stop. */
 .conduct-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin: 24px 0 0;
+  gap: 20px;
+  margin: 18px 0 0;
   padding: 0;
   list-style: none;
   counter-reset: step;
@@ -912,9 +866,9 @@ kbd {
   counter-increment: step;
 }
 .conduct-steps svg {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 4px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 2px;
   fill: none;
   stroke: var(--brass-bright);
   stroke-width: 1.6;
@@ -922,7 +876,7 @@ kbd {
   stroke-linejoin: round;
 }
 .conduct-steps b {
-  font: italic 500 19px/1.2 var(--font-display);
+  font: italic 500 18px/1.2 var(--font-display);
 }
 .conduct-steps b::before {
   content: counter(step) '. ';
@@ -931,14 +885,16 @@ kbd {
 }
 .conduct-steps span { color: var(--ink-2); font-size: 13px; line-height: 1.5; }
 .conduct-more {
-  margin-top: 20px;
-  padding-top: 16px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
   color: var(--ink-2);
   font-size: 13px;
   line-height: 1.55;
 }
-.conduct-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.conduct-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.button.button-quiet { border-color: var(--line); background: transparent; color: var(--ink-2); }
+.button.button-quiet:hover { border-color: var(--line-strong); color: var(--ink); background: transparent; }
 .conduct-actions .button { margin-top: 0; height: 42px; padding: 0 20px; font-size: 14px; }
 .button.button-primary { background: var(--brass); border-color: var(--brass); color: var(--lacquer); font-weight: 500; }
 .button.button-primary:hover { background: var(--brass-bright); }
@@ -1030,7 +986,7 @@ kbd {
   color: var(--ink);
   background: rgba(255, 255, 255, 0.05);
 }
-.gesture-tab.is-active {
+.gesture-tab[aria-selected='true'] {
   background: var(--brass);
   color: #120e0a;
   font-weight: 600;
@@ -1344,6 +1300,9 @@ input[type='range'] { width: 100%; accent-color: var(--brass); }
   .tool-conduct .tool-value { display: none; }
   .tool-conduct { width: 36px; padding: 0; justify-content: center; }
   .pieces { overflow-x: auto; scrollbar-width: none; }
+  .pieces button { white-space: nowrap; }
+  /* The conduct bar gets its own row above the readout. */
+  .is-conducting .readout { padding-top: 58px; }
   .conduct-intro {
     position: fixed;
     inset: 12px;

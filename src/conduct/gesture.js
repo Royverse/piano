@@ -44,6 +44,7 @@ export class Conductor {
     this.fistProgress = 0;
     this.cut = false;
     this.gesture = 'ready';
+    this.motion = 0;
     this.last = null;
   }
 
@@ -110,11 +111,15 @@ export class Conductor {
       this.top = baton.y;
       this.speed = 0;
     }
+    const beforeX = this.x;
     const before = this.y;
     this.x += (baton.x - this.x) * follow;
     this.y += (baton.y - this.y) * follow;
     const rawSpeed = (this.y - before) / dt; // positive = moving down
     this.speed = this.speed == null ? rawSpeed : this.speed * 0.4 + rawSpeed * 0.6;
+    // Any movement at all, in any direction: stillness means a fermata.
+    const rawMotion = Math.hypot(this.x - beforeX, this.y - before) / dt;
+    this.motion = (this.motion ?? rawMotion) + (rawMotion - (this.motion ?? rawMotion)) * (1 - Math.exp(-dt / 0.25));
     if (!this.cut) this.#watchBeat(t, this.speed);
 
     // Height & Stroke Dynamics:
@@ -197,7 +202,7 @@ export class Conductor {
       gesture = 'fist';
     } else if (this.isPinch) {
       gesture = 'pinch';
-    } else if (Math.abs(this.speed ?? 0) < 0.06 && performance.now() - this.lastBeat > 1200) {
+    } else if ((this.motion ?? 0) < 0.05 && (this.last ?? 0) - this.lastBeat > 1200) {
       gesture = 'hold';
     } else if (this.hasOther && this.dynamic > 0.75) {
       gesture = 'tutti';
