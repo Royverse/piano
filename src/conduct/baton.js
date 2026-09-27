@@ -51,7 +51,13 @@ export class BatonView {
     this.beats = beats;
 
     const baton = [...hands].sort((a, b) => a.x - b.x).pop();
-    if (baton) this.trail.push({ ...this.toStage(baton), t });
+    if (baton) {
+      const pt = this.toStage(baton);
+      const last = this.trail[this.trail.length - 1];
+      if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 2 || t - last.t > 35) {
+        this.trail.push({ ...pt, t });
+      }
+    }
     this.#wake();
   }
 
@@ -152,17 +158,21 @@ export class BatonView {
       }
     }
 
-    // Baton trailing ribbon
-    for (let i = 1; i < this.trail.length; i++) {
-      const a = this.trail[i - 1];
-      const b = this.trail[i];
-      const life = 1 - (now - b.t) / TRAIL_MS;
-      ctx.strokeStyle = `rgba(255, 226, 160, ${0.85 * life})`;
-      ctx.lineWidth = 1.5 + 6.5 * life;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    // Silky luminous ribbon trail
+    if (this.trail.length > 1) {
+      for (let i = 1; i < this.trail.length; i++) {
+        const a = this.trail[i - 1];
+        const b = this.trail[i];
+        const life = Math.max(0, 1 - (now - b.t) / TRAIL_MS);
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        ctx.strokeStyle = `rgba(255, 226, 160, ${0.85 * life})`;
+        ctx.lineWidth = 1.5 + 6.0 * life;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.quadraticCurveTo(a.x, a.y, midX, midY);
+        ctx.stroke();
+      }
     }
 
     // Beat shockwave ripples

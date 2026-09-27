@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Conductor, tempoMark, dynamicMark } from '../src/conduct/gesture.js';
 import { Score, SECTIONS } from '../src/conduct/score.js';
 import { cameraProblem } from '../src/conduct/hands.js';
+import { OneEuro, HandStabilizer } from '../src/conduct/filter.js';
 import { mod12, noteName, spellInKey } from '../src/theory.js';
 
 // A conducting hand: bouncing down and up at `bpm`, sampled like a camera.
@@ -155,4 +156,37 @@ test('tapBeat strikes a beat, tracks coordinates, and calculates tempo', () => {
   assert.equal(beats[1].x, 0.45);
   assert.ok(Math.abs(c.tempo - 100) < 5, `Expected tempo ~100 bpm, got ${c.tempo}`);
 });
+
+test('OneEuro filter suppresses high frequency tremor while adapting to fast motion', () => {
+  const filter = new OneEuro({ minCutoff: 1.0, beta: 6.0 });
+  // Stationary with tremor (noise +/- 0.05 around 0.5)
+  let sumTremor = 0;
+  for (let i = 0; i < 30; i++) {
+    const raw = 0.5 + (i % 2 === 0 ? 0.05 : -0.05);
+    const out = filter.filter(raw, i * 33);
+    if (i > 10) sumTremor += Math.abs(out - 0.5);
+  }
+  const avgTremor = sumTremor / 20;
+  assert.ok(avgTremor < 0.02, `Tremor should be smoothed out, got ${avgTremor}`);
+
+  // Fast movement to 0.9: should quickly track within 2 frames
+  filter.filter(0.9, 1000);
+  const fast = filter.filter(0.9, 1033);
+  assert.ok(fast > 0.82, `Fast movement should follow with low lag, got ${fast}`);
+});
+
+test('HandStabilizer tracks hand identity and smooths coordinates', () => {
+  const stab = new HandStabilizer();
+  const raw1 = [{ x: 0.6, y: 0.4, open: 0.8, points: Array(21).fill({ x: 0.6, y: 0.4 }) }];
+  const s1 = stab.update(raw1, 100);
+  assert.equal(s1.length, 1);
+  const initialId = s1[0].id;
+
+  // Next frame: slightly moved
+  const raw2 = [{ x: 0.61, y: 0.41, open: 0.79, points: Array(21).fill({ x: 0.61, y: 0.41 }) }];
+  const s2 = stab.update(raw2, 133);
+  assert.equal(s2.length, 1);
+  assert.equal(s2[0].id, initialId, 'Hand ID should remain consistent across frames');
+});
+
 

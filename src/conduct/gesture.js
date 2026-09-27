@@ -83,24 +83,48 @@ export class Conductor {
       this.handlers.raise?.();
     }
 
-    // The hand furthest right beats time; a second hand shapes the sound.
-    const sorted = [...hands].sort((a, b) => a.x - b.x);
-    const baton = sorted[sorted.length - 1];
-    const other = sorted.length > 1 ? sorted[0] : null;
+    // The hand furthest right beats time, preserving continuity if both hands move.
+    let baton, other;
+    if (hands.length === 1) {
+      baton = hands[0];
+      other = null;
+    } else {
+      if (this.x != null && this.present) {
+        const d0 = Math.hypot(hands[0].x - this.x, hands[0].y - this.y);
+        const d1 = Math.hypot(hands[1].x - this.x, hands[1].y - this.y);
+        if (d0 < d1 && d0 < 0.28) {
+          baton = hands[0];
+          other = hands[1];
+        } else if (d1 < d0 && d1 < 0.28) {
+          baton = hands[1];
+          other = hands[0];
+        } else {
+          const sorted = [...hands].sort((a, b) => a.x - b.x);
+          baton = sorted[1];
+          other = sorted[0];
+        }
+      } else {
+        const sorted = [...hands].sort((a, b) => a.x - b.x);
+        baton = sorted[1];
+        other = sorted[0];
+      }
+    }
 
     this.#watchFist(t, baton.open);
 
-    const follow = 1 - Math.exp(-dt / 0.05);
+    const follow = 1 - Math.exp(-dt / 0.045);
     if (this.y == null) {
       this.x = baton.x;
       this.y = baton.y;
       this.top = baton.y;
+      this.speed = 0;
     }
     const before = this.y;
     this.x += (baton.x - this.x) * follow;
     this.y += (baton.y - this.y) * follow;
-    const speed = (this.y - before) / dt; // positive = moving down
-    if (!this.cut) this.#watchBeat(t, speed);
+    const rawSpeed = (this.y - before) / dt; // positive = moving down
+    this.speed = this.speed == null ? rawSpeed : this.speed * 0.4 + rawSpeed * 0.6;
+    if (!this.cut) this.#watchBeat(t, this.speed);
 
     // Loudness: size of downstrokes or elevation of shaping hand.
     const fromStroke = clamp((this.lastStroke - 0.02) / 0.28, 0, 1);
