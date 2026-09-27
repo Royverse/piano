@@ -22,10 +22,12 @@ function readHand(landmarks) {
   const wrist = points[0] ?? { x: 0.5, y: 0.5 };
   const palm = (points[9] ? dist(wrist, points[9]) : null) || 0.1;
   const reach = [8, 12, 16, 20].reduce((sum, i) => sum + (points[i] ? dist(wrist, points[i]) : 0), 0) / 4 / palm;
+  const pinchGap = (points[4] && points[8]) ? dist(points[4], points[8]) / palm : 1;
   return {
     x: points[8]?.x ?? 0.5,
     y: points[8]?.y ?? 0.5,
     open: Math.min(1, Math.max(0, (reach - 1.05) / 0.8)),
+    pinch: Math.min(1, Math.max(0, (0.52 - pinchGap) / 0.25)),
     points,
   };
 }

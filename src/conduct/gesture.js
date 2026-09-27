@@ -84,34 +84,24 @@ export class Conductor {
       this.handlers.raise?.();
     }
 
-    // The hand furthest right beats time, preserving continuity if both hands move.
+    // Two-hand detection: in mirrored coordinates, rightmost hand (higher x)
+    // acts as baton leader, and leftmost hand (lower x) acts as expressive sculptor.
     let baton, other;
     if (hands.length === 1) {
       baton = hands[0];
       other = null;
     } else {
-      if (this.x != null && this.present) {
-        const d0 = Math.hypot(hands[0].x - this.x, hands[0].y - this.y);
-        const d1 = Math.hypot(hands[1].x - this.x, hands[1].y - this.y);
-        if (d0 < d1 && d0 < 0.28) {
-          baton = hands[0];
-          other = hands[1];
-        } else if (d1 < d0 && d1 < 0.28) {
-          baton = hands[1];
-          other = hands[0];
-        } else {
-          const sorted = [...hands].sort((a, b) => a.x - b.x);
-          baton = sorted[1];
-          other = sorted[0];
-        }
-      } else {
-        const sorted = [...hands].sort((a, b) => a.x - b.x);
-        baton = sorted[1];
-        other = sorted[0];
-      }
+      const sorted = [...hands].sort((a, b) => a.x - b.x);
+      baton = sorted[sorted.length - 1];
+      other = sorted[0];
     }
 
-    this.#watchFist(t, baton.open);
+    // Cut-off: either hand forming a closed fist triggers the cut-off countdown
+    const isFist = (baton.open < 0.22) || (other && other.open < 0.22);
+    this.#watchFist(t, isFist ? 0.15 : Math.min(baton.open, other?.open ?? 1));
+
+    // Pinch: either hand pinching thumb and index triggers pizzicato
+    const isPinch = (baton.pinch > 0.55) || (other && other.pinch > 0.55);
 
     const follow = 1 - Math.exp(-dt / 0.045);
     if (this.y == null) {
@@ -127,15 +117,37 @@ export class Conductor {
     this.speed = this.speed == null ? rawSpeed : this.speed * 0.4 + rawSpeed * 0.6;
     if (!this.cut) this.#watchBeat(t, this.speed);
 
-    // Loudness: size of downstrokes or elevation of shaping hand.
+    // Height & Stroke Dynamics:
+    // In front of a laptop webcam, hand elevation (vertical Y) naturally sets volume:
+    // Higher up in frame (lower y) = Forte (loud / bright);
+    // Lower down near desk (higher y) = Piano (soft / intimate).
     const fromStroke = clamp((this.lastStroke - 0.02) / 0.28, 0, 1);
-    const fromHand = other ? clamp((0.88 - other.y) / 0.65, 0, 1) : null;
-    const loud = fromHand == null ? fromStroke : 0.3 * fromStroke + 0.7 * fromHand;
-    this.dynamic += (loud - this.dynamic) * (1 - Math.exp(-dt / 0.3));
+    const fromBatonHeight = clamp((0.85 - baton.y) / 0.65, 0, 1);
+    const fromOtherHeight = other ? clamp((0.85 - other.y) / 0.65, 0, 1) : null;
 
-    // Facing a section: pointing left features basses/cellos, right features violins.
-    const facing = other ? other.x : this.x;
-    this.focus += (facing - this.focus) * (1 - Math.exp(-dt / 0.25));
+    let loud;
+    if (other) {
+      // Two hands: the higher hand commands dynamics; both hands raised = Grand Tutti swell!
+      const twoHandHeight = Math.max(fromBatonHeight, fromOtherHeight);
+      loud = 0.35 * fromStroke + 0.65 * twoHandHeight;
+      if (fromBatonHeight > 0.6 && fromOtherHeight > 0.6) {
+        loud = Math.min(1.0, loud * 1.25);
+      }
+    } else {
+      // One hand: combination of stroke intensity and vertical hand elevation
+      loud = 0.72 * fromStroke + 0.28 * fromBatonHeight;
+    }
+    this.dynamic += (loud - this.dynamic) * (1 - Math.exp(-dt / 0.22));
+
+    // Section Focus:
+    // Aiming or gesturing left (x < 0.38) features Basses & Cellos.
+    // Aiming right (x > 0.62) features Violins. Center is balanced tutti.
+    const targetFocus = other ? other.x : this.x;
+    this.focus += (targetFocus - this.focus) * (1 - Math.exp(-dt / 0.22));
+
+    this.isPinch = isPinch;
+    this.hasOther = !!other;
+    this.other = other;
     return this.snapshot();
   }
 
@@ -181,22 +193,34 @@ export class Conductor {
 
   snapshot() {
     let gesture = 'wave';
-    if (this.cut || this.fistProgress > 0.35) gesture = 'fist';
-    else if (!this.present) gesture = 'none';
-    else if (Math.abs(this.speed ?? 0) < 0.05 && performance.now() - this.lastBeat > 1400) gesture = 'hold';
-    else if (this.focus < 0.35) gesture = 'point_left';
-    else if (this.focus > 0.65) gesture = 'point_right';
+    if (this.cut || this.fistProgress > 0.35) {
+      gesture = 'fist';
+    } else if (this.isPinch) {
+      gesture = 'pinch';
+    } else if (Math.abs(this.speed ?? 0) < 0.06 && performance.now() - this.lastBeat > 1200) {
+      gesture = 'hold';
+    } else if (this.hasOther && this.dynamic > 0.75) {
+      gesture = 'tutti';
+    } else if (this.focus < 0.38) {
+      gesture = 'basses';
+    } else if (this.focus > 0.62) {
+      gesture = 'violins';
+    }
 
     return {
       present: this.present,
+      twoHands: this.hasOther,
       x: this.x,
       y: this.y,
+      otherX: this.other?.x ?? null,
+      otherY: this.other?.y ?? null,
       phase: this.phase,
       dynamic: this.dynamic,
       focus: this.focus,
       tempo: this.tempo,
       cut: this.cut,
       fistProgress: this.fistProgress,
+      pizzicato: !!this.isPinch,
       gesture,
     };
   }

@@ -44,11 +44,15 @@ export class BatonView {
     };
   }
 
-  show(hands, t, { fistProgress = 0, state = 'playing', beats = 0 } = {}) {
+  show(hands, t, { fistProgress = 0, state = 'playing', beats = 0, dynamic = 0.5, focus = 0.5, pizzicato = false, gesture = 'wave' } = {}) {
     this.hands = hands;
     this.fistProgress = fistProgress;
     this.state = state;
     this.beats = beats;
+    this.dynamic = dynamic;
+    this.focus = focus;
+    this.pizzicato = pizzicato;
+    this.gesture = gesture;
 
     const baton = [...hands].sort((a, b) => a.x - b.x).pop();
     if (baton) {
@@ -259,52 +263,114 @@ export class BatonView {
       ctx.restore();
     }
 
-    // Active 4/4 Beat Indicator
-    if (this.beats > 0 && this.state === 'playing') {
-      const beatNum = ((this.beats - 1) % 4) + 1; // 1, 2, 3, 4
-      const cx = w - 60;
-      const cy = 48;
-      const r = 18;
+    // Dynamic height gauge (Hand Elevation = Volume / Forte)
+    if (this.hands.length > 0 || this.state === 'playing') {
+      const gx = 28;
+      const gTop = h * 0.22;
+      const gBottom = h * 0.76;
+      const gHeight = gBottom - gTop;
+      const dyn = Math.min(1, Math.max(0.05, this.dynamic ?? 0.5));
+      const currY = gBottom - dyn * gHeight;
 
       ctx.save();
-      const nodes = [
-        { b: 1, x: cx, y: cy + r },
-        { b: 2, x: cx - r, y: cy },
-        { b: 3, x: cx + r, y: cy },
-        { b: 4, x: cx, y: cy - r },
-      ];
-
-      // Connecting diamond
+      // Track line
       ctx.strokeStyle = 'rgba(237, 210, 154, 0.22)';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(nodes[3].x, nodes[3].y);
-      ctx.lineTo(nodes[0].x, nodes[0].y);
-      ctx.lineTo(nodes[1].x, nodes[1].y);
-      ctx.lineTo(nodes[2].x, nodes[2].y);
-      ctx.lineTo(nodes[3].x, nodes[3].y);
+      ctx.moveTo(gx, gTop);
+      ctx.lineTo(gx, gBottom);
       ctx.stroke();
 
-      for (const node of nodes) {
-        const isActive = node.b === beatNum;
-        ctx.fillStyle = isActive ? 'rgba(255, 235, 180, 0.95)' : 'rgba(214, 180, 112, 0.35)';
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, isActive ? 5.5 : 2.8, 0, Math.PI * 2);
-        ctx.fill();
+      // Filled active bar
+      const grad = ctx.createLinearGradient(0, gBottom, 0, gTop);
+      grad.addColorStop(0, 'rgba(214, 180, 112, 0.3)');
+      grad.addColorStop(1, 'rgba(255, 235, 180, 0.9)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, gBottom);
+      ctx.lineTo(gx, currY);
+      ctx.stroke();
 
-        if (isActive) {
-          ctx.strokeStyle = 'rgba(255, 235, 180, 0.4)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, 9.5, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
+      // Indicator bead
+      ctx.fillStyle = 'rgba(255, 245, 220, 0.95)';
+      ctx.beginPath();
+      ctx.arc(gx, currY, 5, 0, Math.PI * 2);
+      ctx.fill();
 
-      ctx.fillStyle = 'rgba(237, 210, 154, 0.85)';
-      ctx.font = '500 11px "Jost", sans-serif';
+      // Glow around indicator
+      const beadGlow = ctx.createRadialGradient(gx, currY, 2, gx, currY, 14);
+      beadGlow.addColorStop(0, 'rgba(255, 235, 180, 0.7)');
+      beadGlow.addColorStop(1, 'rgba(255, 235, 180, 0)');
+      ctx.fillStyle = beadGlow;
+      ctx.beginPath();
+      ctx.arc(gx, currY, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Labels
+      ctx.font = 'italic 600 12.5px "Bodoni Moda", serif';
+      ctx.fillStyle = dyn > 0.75 ? 'rgba(255, 235, 180, 0.98)' : 'rgba(214, 180, 112, 0.45)';
+      ctx.textAlign = 'left';
+      ctx.fillText('ff Forte', gx + 12, gTop + 4);
+
+      ctx.fillStyle = (dyn >= 0.4 && dyn <= 0.75) ? 'rgba(255, 235, 180, 0.98)' : 'rgba(214, 180, 112, 0.45)';
+      ctx.fillText('mf', gx + 12, gTop + gHeight * 0.5 + 4);
+
+      ctx.fillStyle = dyn < 0.4 ? 'rgba(255, 235, 180, 0.98)' : 'rgba(214, 180, 112, 0.45)';
+      ctx.fillText('p Piano', gx + 12, gBottom + 4);
+      ctx.restore();
+    }
+
+    // Floating gesture pill near active baton tip
+    if (batonHand && batonHand.points) {
+      const tip = this.toStage(batonHand.points[8] ?? batonHand);
+      let pillText = this.pizzicato ? '✨ Pizzicato (Plucked)' :
+                     this.gesture === 'tutti' ? '🙌 Grand Tutti' :
+                     this.gesture === 'hold' ? '⏸️ Fermata (Holding)' :
+                     this.gesture === 'basses' ? '🎻 Basses & Cellos' :
+                     this.gesture === 'violins' ? '🎻 Violins' : '🎻 Bowed Strings';
+
+      ctx.save();
+      ctx.font = '500 12px "Jost", sans-serif';
+      const textW = ctx.measureText(pillText).width;
+      const px = Math.min(w - textW / 2 - 14, Math.max(textW / 2 + 14, tip.x));
+      const py = Math.max(26, tip.y - 32);
+
+      // Pill background
+      ctx.fillStyle = this.pizzicato ? 'rgba(42, 28, 12, 0.88)' : 'rgba(18, 14, 10, 0.85)';
+      ctx.strokeStyle = this.pizzicato ? 'rgba(255, 215, 120, 0.85)' : 'rgba(237, 210, 154, 0.4)';
+      ctx.lineWidth = 1;
+      const pw = textW + 18;
+      const ph = 24;
+      ctx.beginPath();
+      ctx.roundRect(px - pw / 2, py - ph / 2, pw, ph, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Pill text
+      ctx.fillStyle = this.pizzicato ? 'rgba(255, 235, 180, 0.98)' : 'rgba(245, 235, 215, 0.95)';
       ctx.textAlign = 'center';
-      ctx.fillText(`Beat ${beatNum}/4`, cx, cy + r + 16);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pillText, px, py);
+      ctx.restore();
+    }
+
+    // Grand Tutti harmonic bridge connecting both hands
+    if (sortedHands.length > 1 && (this.gesture === 'tutti' || (this.dynamic ?? 0) > 0.75)) {
+      const p1 = this.toStage(sortedHands[0].points?.[8] ?? sortedHands[0]);
+      const p2 = this.toStage(sortedHands[1].points?.[8] ?? sortedHands[1]);
+      ctx.save();
+      const bGrad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+      bGrad.addColorStop(0, 'rgba(255, 215, 120, 0.5)');
+      bGrad.addColorStop(0.5, 'rgba(255, 245, 220, 0.85)');
+      bGrad.addColorStop(1, 'rgba(255, 215, 120, 0.5)');
+      ctx.strokeStyle = bGrad;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.quadraticCurveTo((p1.x + p2.x) / 2, Math.min(p1.y, p2.y) - 25, p2.x, p2.y);
+      ctx.stroke();
       ctx.restore();
     }
 

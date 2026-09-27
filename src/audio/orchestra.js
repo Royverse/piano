@@ -150,6 +150,19 @@ class Section {
     this.hiss.gain.setTargetAtTime(level * 0.06, t + 0.08, 0.2);
   }
 
+  /** A crisp pizzicato (plucked string) articulation. */
+  pizz(level, brightness, t, strength = 0.5) {
+    this.level = level;
+    this.amp.gain.cancelScheduledValues(t);
+    const peak = Math.max(0.002, level * (1.3 + strength * 0.7));
+    this.amp.gain.setValueAtTime(peak, t);
+    this.amp.gain.exponentialRampToValueAtTime(0.0008, t + 0.48);
+    this.tone.frequency.setValueAtTime(brightness * 1.5, t);
+    this.tone.frequency.setTargetAtTime(800, t + 0.04, 0.12);
+    this.hiss.gain.setValueAtTime(level * 0.22, t);
+    this.hiss.gain.setTargetAtTime(0, t + 0.02, 0.05);
+  }
+
   dispose(t) {
     this.amp.gain.cancelScheduledValues(t);
     this.amp.gain.setTargetAtTime(0, t, 0.08);
@@ -203,22 +216,27 @@ export class Orchestra {
    * Play one beat of the score. `strength` (0–1) is how sharply the beat was
    * given; notes after the beat land at their fraction of `beatSeconds`.
    */
-  play(plan, t, { dynamic, focus, strength = 0.5, beatSeconds = 0.75 }) {
+  play(plan, t, { dynamic, focus, strength = 0.5, beatSeconds = 0.75, pizzicato = false }) {
     if (!this.sections || plan.silent) return;
     for (const id of SECTIONS) {
       const s = this.sections[id];
       const midi = plan.notes[id];
       const changed = midi !== s.midi;
       const wasSounding = s.level > 0.004;
-      if (changed) s.note(midi, t, { legato: wasSounding && Math.abs(midi - (s.midi ?? midi)) <= 9 });
+      if (changed) s.note(midi, t, { legato: !pizzicato && wasSounding && Math.abs(midi - (s.midi ?? midi)) <= 9 });
       const level = sectionLevel(id, dynamic, focus);
       const bright = this.#brightness(id, dynamic, midi);
-      // Fresh bows on chord changes and on firm beats; otherwise sustain.
-      if (changed || !wasSounding || strength > 0.35) s.accent(level, bright, t, 0.12 + 0.35 * strength);
-      else s.shape(level, bright, t);
+      // Pizzicato plucks if pinched; otherwise bowed legato/accent
+      if (pizzicato) {
+        s.pizz(level, bright, t, strength);
+      } else if (changed || !wasSounding || strength > 0.35) {
+        s.accent(level, bright, t, 0.12 + 0.35 * strength);
+      } else {
+        s.shape(level, bright, t);
+      }
     }
     for (const { section, midi, at } of plan.after) {
-      this.sections[section].note(midi, t + at * beatSeconds, { legato: true });
+      this.sections[section].note(midi, t + at * beatSeconds, { legato: !pizzicato });
     }
   }
 

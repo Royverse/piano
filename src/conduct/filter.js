@@ -122,6 +122,7 @@ export class HandStabilizer {
           id,
           landmarkFilters,
           openFilter: new OneEuro({ minCutoff: 2.0, beta: 5.0 }),
+          pinchFilter: new OneEuro({ minCutoff: 2.0, beta: 5.0 }),
           lastSeen: now,
           lastCenter: center,
         };
@@ -141,7 +142,9 @@ export class HandStabilizer {
           })
         : null;
 
+      if (!handState.pinchFilter) handState.pinchFilter = new OneEuro({ minCutoff: 2.0, beta: 5.0 });
       const smoothedOpen = handState.openFilter.filter(raw.open ?? 1, now);
+      const smoothedPinch = handState.pinchFilter.filter(raw.pinch ?? 0, now);
       const batonPt = smoothedPoints?.[8] ?? { x: raw.x, y: raw.y };
 
       matched.push({
@@ -149,6 +152,7 @@ export class HandStabilizer {
         x: batonPt.x,
         y: batonPt.y,
         open: Math.max(0, Math.min(1, smoothedOpen)),
+        pinch: Math.max(0, Math.min(1, smoothedPinch)),
         points: smoothedPoints,
       });
     }

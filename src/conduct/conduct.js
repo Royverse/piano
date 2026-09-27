@@ -183,20 +183,20 @@ export class ConductMode {
 
     const descs = {
       wave: {
-        title: 'Wave in 4/4 meter',
-        text: 'Move your hand down on beat 1, left on 2, right on 3, up on 4. Your cadence sets the tempo (BPM).'
+        title: 'Natural Flow & Tempo',
+        text: 'Wave your hand in a natural cadence to conduct the flow. Wave faster for Allegro, or slower for a peaceful Andante. Both hands work together!'
       },
       dynamics: {
-        title: 'Swell & Soften',
-        text: 'Make large, expansive gestures to swell into Forte (loud). Keep gestures small and compact for Piano (soft).'
+        title: 'Hand Height = Volume (Dynamics)',
+        text: 'Raise your hand high for Forte (loud, powerful strings). Lower your hand down near your desk for Piano (soft whisper). Raising both hands unleashes an epic Tutti swell!'
       },
-      cue: {
-        title: 'Direct Sections',
-        text: 'Point or lean left towards the Cellos & Basses, or right towards the Violins, to feature their melodies.'
+      pinch: {
+        title: 'Pinch = Pluck (Pizzicato)',
+        text: 'Touch your thumb and index finger together to make the orchestra pluck with playful Pizzicato. Release into an open hand for lush bowed strings.'
       },
       cutoff: {
-        title: 'Clench to Stop',
-        text: 'Close your hand into a fist to cut off the orchestra. You can also press Esc or click Cut off anytime.'
+        title: 'Clench Fist to Stop',
+        text: 'Close either hand into a fist to cut off the orchestra. You can also press Esc or click Cut off anytime.'
       }
     };
     const descEl = $('[data-gesture-desc]');
@@ -220,18 +220,27 @@ export class ConductMode {
       fistProgress: snap.fistProgress,
       state: this.state,
       beats: this.beats,
+      dynamic: snap.dynamic,
+      focus: snap.focus,
+      pizzicato: snap.pizzicato,
+      gesture: snap.gesture,
     });
 
     const liveText = $('[data-gesture-live-text]');
     if (liveText) {
       if (snap.cut || snap.fistProgress > 0.3) {
         liveText.textContent = '🛑 Cut-Off (Fist Closed)';
+      } else if (snap.pizzicato) {
+        liveText.textContent = '✨ Pizzicato (Plucking Fingers)';
+      } else if (snap.gesture === 'tutti') {
+        liveText.textContent = '🙌 Grand Tutti (Both Hands)';
       } else if (snap.gesture === 'hold') {
         liveText.textContent = '✋ Holding (Fermata)';
       } else if (snap.tempo) {
-        liveText.textContent = `♩ Waving (${Math.round(snap.tempo)} BPM · ${tempoMark(snap.tempo)})`;
+        const handsTxt = snap.twoHands ? 'Both Hands' : '1 Hand';
+        liveText.textContent = `♩ ${handsTxt} (${Math.round(snap.tempo)} BPM · ${tempoMark(snap.tempo)})`;
       } else if (snap.present) {
-        liveText.textContent = '✋ Hand Tracked · Ready';
+        liveText.textContent = snap.twoHands ? '🙌 Both Hands Ready' : '✋ Ready to Conduct';
       }
     }
   }
@@ -314,8 +323,14 @@ export class ConductMode {
       return;
     }
     const beatSeconds = snap.tempo ? 60 / snap.tempo : 0.75;
-    const strength = clamp(b.stroke / 0.3, 0, 1);
-    this.orchestra.play(plan, t, { dynamic, focus: snap.focus, strength, beatSeconds });
+    const strength = clamp((b.stroke ?? 0.16) / 0.3, 0, 1);
+    this.orchestra.play(plan, t, {
+      dynamic,
+      focus: snap.focus,
+      strength,
+      beatSeconds,
+      pizzicato: snap.pizzicato,
+    });
 
     this.state = 'playing';
     this.lastBeatAt = now;
@@ -330,7 +345,10 @@ export class ConductMode {
     this.baton.beat({ x: b.x, y: b.y }, strength);
     this.#meters(dynamic, snap.focus);
     this.#readout(plan, snap);
-    this.#status(`Bar ${plan.bar} · Beat ${plan.beatInBar}${snap.tempo ? ` · ${Math.round(snap.tempo)} BPM` : ''}`);
+    const gesturePrefix = snap.pizzicato ? '✨ Pizzicato · ' :
+                          snap.gesture === 'tutti' ? '🙌 Tutti · ' :
+                          snap.twoHands ? '🙌 2 Hands · ' : '';
+    this.#status(`${gesturePrefix}Bar ${plan.bar} · Beat ${plan.beatInBar}${snap.tempo ? ` · ${Math.round(snap.tempo)} BPM` : ''}`);
   }
 
   #cutoff() {
@@ -358,17 +376,28 @@ export class ConductMode {
     this.baton.setState(this.state, 0);
   }
 
-  // Between beats: follow the hands, and hold if the beats stop.
+  // Between beats: follow the hands, and flow naturally with the tempo
   #tick() {
     if (!this.active) return;
     const snap = this.conductor.snapshot();
     const t = this.engine.ctx.currentTime;
+    const now = performance.now();
+
     if (this.state === 'playing') {
-      if (performance.now() - this.lastBeatAt > Math.max(1500, this.beatMs * 2.4)) {
+      // Natural cadence: when waving naturally, the music flows in time!
+      if (snap.present && !snap.cut && snap.gesture !== 'hold' && snap.gesture !== 'fist') {
+        const interval = Math.max(380, this.beatMs || 750);
+        if (now - this.lastBeatAt >= interval) {
+          this.#beat({ stroke: 0.12, x: snap.x, y: snap.y });
+          return;
+        }
+      }
+
+      // If hand is held still for more than 1.8 seconds, hold the chord in suspension (Fermata)
+      if (now - this.lastBeatAt > Math.max(1800, (this.beatMs || 750) * 2.2)) {
         this.state = 'holding';
         this.orchestra.hold(t);
-        this.#status('Holding — beat to go on');
-        this.#fadeBow();
+        this.#status('Holding (fermata) — wave to continue');
         this.baton.setState('holding', this.beats);
       } else {
         this.orchestra.express(snap.dynamic, snap.focus, t);

@@ -62,11 +62,39 @@ const FIST_CURL = [
   { x: 0.16, y: -0.20, z: 0.12 },
 ];
 
+// Pinch pose coordinates (thumb tip 4 and index tip 8 meet)
+const PINCH_POSE = [
+  { x: 0, y: 0, z: 0 },            // 0: Wrist
+  // Thumb arched towards index
+  { x: -0.12, y: -0.12, z: 0.02 }, // 1
+  { x: -0.19, y: -0.24, z: 0.04 }, // 2
+  { x: -0.22, y: -0.38, z: 0.05 }, // 3
+  { x: -0.20, y: -0.52, z: 0.06 }, // 4: Thumb tip
+  // Index curled down towards thumb tip
+  { x: -0.12, y: -0.42, z: 0 },    // 5
+  { x: -0.15, y: -0.52, z: 0.02 }, // 6
+  { x: -0.18, y: -0.58, z: 0.04 }, // 7
+  { x: -0.20, y: -0.52, z: 0.06 }, // 8: Index tip meets thumb tip
+  // Middle, ring, pinky remain gracefully open
+  { x: 0.00, y: -0.45, z: 0 },     // 9
+  { x: 0.02, y: -0.63, z: -0.02 }, // 10
+  { x: 0.03, y: -0.78, z: -0.04 }, // 11
+  { x: 0.04, y: -0.90, z: -0.05 }, // 12
+  { x: 0.12, y: -0.41, z: 0 },     // 13
+  { x: 0.14, y: -0.56, z: -0.02 }, // 14
+  { x: 0.16, y: -0.69, z: -0.04 }, // 15
+  { x: 0.17, y: -0.80, z: -0.05 }, // 16
+  { x: 0.22, y: -0.34, z: 0 },     // 17
+  { x: 0.25, y: -0.46, z: -0.02 }, // 18
+  { x: 0.27, y: -0.56, z: -0.04 }, // 19
+  { x: 0.28, y: -0.66, z: -0.05 }, // 20
+];
+
 export class HandModel {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.mode = 'wave'; // 'wave' | 'dynamics' | 'cue' | 'cutoff'
+    this.mode = 'wave'; // 'wave' | 'dynamics' | 'pinch' | 'cutoff'
     this.running = false;
     this.trail = [];
     this.ripples = [];
@@ -111,86 +139,99 @@ export class HandModel {
     let handScale = Math.min(w, h) * 0.32;
     let handRot = 0;
     let curl = 0;
+    let pinchAmount = 0;
     let batonLength = handScale * 1.5;
     let showBaton = true;
     let beatLabel = '';
+    let showLadder = false;
+    let ladderDynamic = 0.5;
 
     // Calculate pose depending on mode
     if (this.mode === 'wave') {
-      // 4/4 Conductor pattern animation:
-      // Beat 1: Downbeat (t = 0.0)
-      // Beat 2: Inward left (t = 0.25)
-      // Beat 3: Outward right (t = 0.50)
-      // Beat 4: Upbeat (t = 0.75)
-      const period = 1.35; // ~88 BPM
-      const phase = (time % period) / period;
-      const angle = phase * Math.PI * 2;
+      // Natural fluid wave animation with harmonic oscillation
+      showBaton = true;
+      const period = 1.4;
+      const tNorm = (time % period) / period;
+      const dx = Math.sin(tNorm * Math.PI * 2) * 0.22;
+      const dy = Math.sin(tNorm * Math.PI * 4) * 0.08 + Math.cos(tNorm * Math.PI * 2) * 0.06;
+      handPos.x = w * 0.5 + dx * w * 0.65;
+      handPos.y = h * 0.54 + dy * h * 0.5;
+      handRot = dx * 0.75;
+      beatLabel = '♩ Natural Flow · Wave fluidly to set tempo';
 
-      let dx = 0, dy = 0;
-      if (phase < 0.25) {
-        // Downbeat (1)
-        const p = phase / 0.25;
-        dx = -0.05 * Math.sin(p * Math.PI);
-        dy = 0.18 * Math.sin(p * Math.PI / 2);
-        if (p > 0.85) beatLabel = '1 · Down';
-      } else if (phase < 0.50) {
-        // Inward (2)
-        const p = (phase - 0.25) / 0.25;
-        dx = -0.22 * Math.sin(p * Math.PI / 2);
-        dy = 0.18 - 0.08 * Math.sin(p * Math.PI / 2);
-        if (p > 0.85) beatLabel = '2 · Left';
-      } else if (phase < 0.75) {
-        // Outward (3)
-        const p = (phase - 0.50) / 0.25;
-        dx = -0.22 + 0.44 * Math.sin(p * Math.PI / 2);
-        dy = 0.10 - 0.04 * Math.sin(p * Math.PI / 2);
-        if (p > 0.85) beatLabel = '3 · Right';
-      } else {
-        // Upbeat (4)
-        const p = (phase - 0.75) / 0.25;
-        dx = 0.22 - 0.22 * Math.sin(p * Math.PI / 2);
-        dy = 0.06 - 0.24 * Math.sin(p * Math.PI / 2);
-        if (p > 0.85) beatLabel = '4 · Up';
-      }
-
-      handPos.x = w * 0.5 + dx * w * 0.6;
-      handPos.y = h * 0.52 + dy * h * 0.6;
-      handRot = dx * 0.7;
-
-      // Spawn beat ripples at bottom of downstroke
-      if (phase > 0.22 && phase < 0.26 && (!this.lastRip || now - this.lastRip > 800)) {
+      // Gentle beat ripple at lowest dip
+      const isNadir = (tNorm > 0.22 && tNorm < 0.28) || (tNorm > 0.72 && tNorm < 0.78);
+      if (isNadir && (!this.lastRip || now - this.lastRip > 450)) {
         this.lastRip = now;
-        this.ripples.push({ x: handPos.x, y: handPos.y + handScale * 0.9, t: now });
+        this.ripples.push({
+          x: handPos.x + Math.sin(handRot - 0.25) * batonLength,
+          y: handPos.y - Math.cos(handRot - 0.25) * batonLength,
+          t: now,
+          color: '255, 220, 140',
+          maxR: 45
+        });
       }
     } else if (this.mode === 'dynamics') {
-      // Swell up and down
-      const p = 0.5 + 0.5 * Math.sin(time * 2.2);
-      handPos.y = h * (0.68 - 0.32 * p);
-      handScale = Math.min(w, h) * (0.28 + 0.12 * p);
+      // Height = Volume (Dynamics): Hand raised high = Forte; lowered = Piano
       showBaton = false;
-      curl = 0;
-      beatLabel = p > 0.6 ? 'Forte (Loud)' : 'Piano (Soft)';
-    } else if (this.mode === 'cue') {
-      // Point left or right
-      const p = Math.sin(time * 1.8);
-      handPos.x = w * (0.5 + 0.25 * p);
-      handRot = p * 0.5;
-      showBaton = true;
-      beatLabel = p < -0.2 ? 'Point Left (Cellos & Basses)' : p > 0.2 ? 'Point Right (Violins)' : 'Full Orchestra';
+      showLadder = true;
+      const p = 0.5 + 0.5 * Math.sin(time * 1.8);
+      ladderDynamic = p;
+      handPos.y = h * (0.76 - 0.48 * p);
+      handScale = Math.min(w, h) * (0.27 + 0.09 * p);
+      handPos.x = w * 0.54;
+
+      if (p > 0.7) {
+        beatLabel = 'ff Forte · Hand Raised High (Loud Strings)';
+      } else if (p < 0.3) {
+        beatLabel = 'p Piano · Hand Lowered Near Desk (Soft)';
+      } else {
+        beatLabel = 'mf Mezzo · Medium Dynamic Expression';
+      }
+    } else if (this.mode === 'pinch') {
+      // Pinch = Pluck (Pizzicato)
+      showBaton = false;
+      const cycle = time % 2.8;
+      if (cycle < 1.1) {
+        pinchAmount = 0;
+        beatLabel = '🖐️ Open Hand · Arco (Bowed Strings)';
+      } else if (cycle < 1.35) {
+        pinchAmount = Math.min(1, (cycle - 1.1) / 0.25);
+        beatLabel = '👌 Pinching Thumb & Index Finger…';
+      } else if (cycle < 2.3) {
+        pinchAmount = 1;
+        beatLabel = '✨ Pinch · Pizzicato (Plucked Strings!)';
+        if (!this.lastPluck || now - this.lastPluck > 1800) {
+          this.lastPluck = now;
+          this.ripples.push({
+            x: handPos.x - 0.20 * handScale,
+            y: handPos.y - 0.52 * handScale,
+            t: now,
+            color: '255, 235, 120',
+            maxR: 35
+          });
+        }
+      } else {
+        pinchAmount = 1 - (cycle - 2.3) / 0.5;
+        beatLabel = 'Release to Bow Again';
+      }
     } else if (this.mode === 'cutoff') {
       // Open hand then clench into fist
-      const cycle = time % 3.0;
-      if (cycle < 1.4) {
-        curl = 0;
-        beatLabel = 'Open hand (Playing)';
-      } else if (cycle < 2.5) {
-        curl = Math.min(1, (cycle - 1.4) / 0.3);
-        beatLabel = 'Clench Fist (Cut off)';
-      } else {
-        curl = 1 - (cycle - 2.5) / 0.5;
-        beatLabel = 'Release';
-      }
       showBaton = false;
+      const cycle = time % 3.0;
+      if (cycle < 1.2) {
+        curl = 0;
+        beatLabel = '🖐️ Open Hand (Playing)';
+      } else if (cycle < 1.6) {
+        curl = Math.min(1, (cycle - 1.2) / 0.4);
+        beatLabel = '✊ Clench Fist (Cut off)';
+      } else if (cycle < 2.4) {
+        curl = 1;
+        beatLabel = '🛑 Clenched Fist · Silence Orchestra';
+      } else {
+        curl = 1 - (cycle - 2.4) / 0.6;
+        beatLabel = 'Release to Begin Again';
+      }
     }
 
     // Render baton and trail
@@ -240,30 +281,105 @@ export class HandModel {
       ctx.restore();
     }
 
+    // Draw dynamic height ladder on the left in dynamics mode
+    if (showLadder) {
+      const topY = 32;
+      const botY = h - 36;
+      const trackX = 32;
+
+      ctx.save();
+      // Track line
+      ctx.strokeStyle = 'rgba(237, 210, 154, 0.25)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(trackX, topY);
+      ctx.lineTo(trackX, botY);
+      ctx.stroke();
+
+      // Active fill
+      const beadY = botY - (botY - topY) * ladderDynamic;
+      ctx.strokeStyle = 'rgba(237, 210, 154, 0.75)';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(trackX, botY);
+      ctx.lineTo(trackX, beadY);
+      ctx.stroke();
+
+      // Beads/ticks
+      ctx.fillStyle = 'rgba(237, 210, 154, 0.85)';
+      ctx.font = '600 11px "Jost", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('ff', trackX - 8, topY + 4);
+      ctx.fillText('mf', trackX - 8, (topY + botY) * 0.5 + 4);
+      ctx.fillText('p', trackX - 8, botY + 4);
+
+      // Tracking bead
+      const beadGlow = ctx.createRadialGradient(trackX, beadY, 1, trackX, beadY, 12);
+      beadGlow.addColorStop(0, 'rgba(255, 255, 235, 1)');
+      beadGlow.addColorStop(0.5, 'rgba(237, 210, 154, 0.7)');
+      beadGlow.addColorStop(1, 'rgba(237, 210, 154, 0)');
+      ctx.fillStyle = beadGlow;
+      ctx.beginPath();
+      ctx.arc(trackX, beadY, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(trackX, beadY, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Dynamic swell aura in dynamics mode
+    if (this.mode === 'dynamics') {
+      ctx.save();
+      const auraR = handScale * (0.8 + ladderDynamic * 0.9);
+      const auraGlow = ctx.createRadialGradient(
+        handPos.x, handPos.y - handScale * 0.4, 8,
+        handPos.x, handPos.y - handScale * 0.4, auraR
+      );
+      auraGlow.addColorStop(0, `rgba(255, 220, 130, ${0.12 + ladderDynamic * 0.38})`);
+      auraGlow.addColorStop(1, 'rgba(255, 220, 130, 0)');
+      ctx.fillStyle = auraGlow;
+      ctx.beginPath();
+      ctx.arc(handPos.x, handPos.y - handScale * 0.4, auraR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Shockwave ripples
     this.ripples = this.ripples.filter((r) => now - r.t < 650);
     for (const r of this.ripples) {
       const p = (now - r.t) / 650;
+      const maxRadius = r.maxR || 50;
       ctx.save();
-      ctx.strokeStyle = `rgba(255, 220, 140, ${(1 - p) * 0.8})`;
+      ctx.strokeStyle = `rgba(${r.color || '255, 220, 140'}, ${(1 - p) * 0.85})`;
       ctx.lineWidth = 2.5 * (1 - p);
       ctx.beginPath();
-      ctx.arc(r.x, r.y, 8 + p * 45, 0, Math.PI * 2);
+      ctx.arc(r.x, r.y, 6 + p * maxRadius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Interpolate points between rest and fist
+    // Interpolate points between rest, fist, or pinch
     const pts = REST_HAND.map((base, i) => {
-      const fist = FIST_CURL[i];
-      const lx = base.x + (fist.x - base.x) * curl;
-      const ly = base.y + (fist.y - base.y) * curl;
+      let targetX = base.x;
+      let targetY = base.y;
+      if (this.mode === 'cutoff') {
+        const fist = FIST_CURL[i];
+        targetX = base.x + (fist.x - base.x) * curl;
+        targetY = base.y + (fist.y - base.y) * curl;
+      } else if (this.mode === 'pinch') {
+        const pinch = PINCH_POSE[i];
+        targetX = base.x + (pinch.x - base.x) * pinchAmount;
+        targetY = base.y + (pinch.y - base.y) * pinchAmount;
+      }
 
       // Rotate and position
       const cos = Math.cos(handRot);
       const sin = Math.sin(handRot);
-      const rx = lx * cos - ly * sin;
-      const ry = lx * sin + ly * cos;
+      const rx = targetX * cos - targetY * sin;
+      const ry = targetX * sin + targetY * cos;
 
       return {
         x: handPos.x + rx * handScale,
@@ -290,6 +406,17 @@ export class HandModel {
       const r = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20) ? 3.5 : 2.2;
       ctx.beginPath();
       ctx.arc(pts[i].x, pts[i].y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Sparkle burst at contact point when pinching
+    if (this.mode === 'pinch' && pinchAmount > 0.85) {
+      const pinchPt = pts[4];
+      ctx.fillStyle = 'rgba(255, 245, 180, 0.95)';
+      ctx.shadowColor = 'rgba(255, 220, 100, 1)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(pinchPt.x, pinchPt.y, 5, 0, Math.PI * 2);
       ctx.fill();
     }
 
