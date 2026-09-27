@@ -53,6 +53,7 @@ export function cameraProblem(error) {
 
 let warmPromise = null;
 let landmarkerInstance = null;
+let globalLastTimestamp = 0;
 
 async function resolveModelPath() {
   try {
@@ -147,61 +148,53 @@ export async function startHands(video, { onFrame, onStatus }) {
     throw error;
   }
 
-  // Optimized downscaled processing canvas for zero-lag CPU inference.
-  // Rescaling 1080p webcams to 360x270 cuts CPU inference time by up to 75%
-  // while preserving full hand tracking accuracy.
-  const procCanvas = document.createElement('canvas');
-  procCanvas.width = 360;
-  procCanvas.height = 270;
-  const procCtx = procCanvas.getContext('2d', { willReadFrequently: true, alpha: false });
-
   const stabilizer = new HandStabilizer();
   let running = true;
   let isDetecting = false;
   let animId = null;
+  let lastDetectTime = 0;
 
   const processFrame = () => {
     if (!running) return;
 
-    if (video.readyState >= 2 && !isDetecting && video.videoWidth > 0) {
-      isDetecting = true;
-      const t = performance.now();
-      try {
-        procCtx.drawImage(video, 0, 0, procCanvas.width, procCanvas.height);
-        const result = landmarker.detectForVideo(procCanvas, Math.round(t));
-        if (result?.landmarks) {
-          const rawHands = result.landmarks.map(readHand);
-          const smoothedHands = stabilizer.update(rawHands, t);
-          onFrame({ t, hands: smoothedHands });
+    const now = performance.now();
+
+    if (video.readyState >= 2 && video.videoWidth > 0 && !isDetecting) {
+      // Throttle detection to ~35 FPS (every ~28ms) to match webcam capture rate and avoid CPU overload
+      if (now - lastDetectTime >= 28) {
+        isDetecting = true;
+        lastDetectTime = now;
+
+        // Ensure timestamp is strictly monotonically increasing as required by MediaPipe Tasks Vision
+        const timestamp = Math.max(globalLastTimestamp + 1, Math.round(now));
+        globalLastTimestamp = timestamp;
+
+        try {
+          const result = landmarker.detectForVideo(video, timestamp);
+          if (result) {
+            const rawHands = (result.landmarks || []).map(readHand);
+            const smoothedHands = stabilizer.update(rawHands, now);
+            onFrame({ t: now, hands: smoothedHands });
+          }
+        } catch (err) {
+          console.warn('Hand tracking frame skipped:', err);
+        } finally {
+          isDetecting = false;
         }
-      } catch (err) {
-        console.warn('Hand tracking frame skipped:', err);
-      } finally {
-        isDetecting = false;
       }
     }
 
-    if ('requestVideoFrameCallback' in video) {
-      animId = video.requestVideoFrameCallback(processFrame);
-    } else {
-      animId = requestAnimationFrame(processFrame);
-    }
+    // Always use requestAnimationFrame to guarantee a continuous, uninterruptible frame loop
+    // regardless of video element CSS blend mode, opacity, or canvas layering.
+    animId = requestAnimationFrame(processFrame);
   };
 
-  if ('requestVideoFrameCallback' in video) {
-    animId = video.requestVideoFrameCallback(processFrame);
-  } else {
-    animId = requestAnimationFrame(processFrame);
-  }
+  animId = requestAnimationFrame(processFrame);
 
   return {
     stop() {
       running = false;
-      if ('cancelVideoFrameCallback' in video && animId != null) {
-        video.cancelVideoFrameCallback(animId);
-      } else if (animId != null) {
-        cancelAnimationFrame(animId);
-      }
+      if (animId != null) cancelAnimationFrame(animId);
       stabilizer.reset();
       stream.getTracks().forEach((track) => track.stop());
       video.srcObject = null;

@@ -13,6 +13,7 @@ export class OneEuro {
   }
 
   filter(val, t) {
+    if (typeof val !== 'number' || Number.isNaN(val)) return this.x ?? 0;
     if (this.x == null || this.lastTime == null) {
       this.x = val;
       this.dx = 0;
@@ -53,6 +54,7 @@ export class PointFilter {
   }
 
   filter(pt, t) {
+    if (!pt || typeof pt.x !== 'number' || typeof pt.y !== 'number') return pt;
     return {
       x: this.fx.filter(pt.x, t),
       y: this.fy.filter(pt.y, t),

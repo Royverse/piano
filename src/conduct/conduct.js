@@ -143,6 +143,7 @@ export class ConductMode {
     if (source === 'camera') {
       try {
         this.ui.video.hidden = false;
+        this.hands?.stop();
         this.hands = await startHands(this.ui.video, {
           onStatus: (text) => this.#status(text),
           onFrame: (frame) => this.#frame(frame),
