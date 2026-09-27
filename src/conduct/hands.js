@@ -1,9 +1,10 @@
-// Camera hand tracking with MediaPipe, loaded only when someone chooses the
-// camera. Frames are processed in the browser; nothing is recorded or sent.
+// Camera hand tracking with MediaPipe. Frames are processed locally in the
+// browser; nothing is recorded or sent.
 
 const VERSION = '1.0.1';
 const LIBRARY = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}`;
-const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+const LOCAL_MODEL = new URL('../../models/hand_landmarker.task', import.meta.url).href;
+const REMOTE_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 
 // Bones between MediaPipe's 21 hand landmarks, for drawing.
 export const BONES = [
@@ -30,6 +31,9 @@ function readHand(landmarks) {
 
 /** Why the camera couldn't start, in words someone can act on. */
 export function cameraProblem(error) {
+  if (typeof window !== 'undefined' && window.isSecureContext === false) {
+    return 'Camera access requires HTTPS or localhost. Open this page over a secure connection, or conduct with your mouse.';
+  }
   switch (error?.name) {
     case 'NotAllowedError':
     case 'SecurityError':
@@ -40,38 +44,98 @@ export function cameraProblem(error) {
     case 'NotReadableError':
       return 'Another app is using the camera. Close it and try again, or conduct with your mouse.';
     default:
-      return 'Hand tracking couldn\'t load. Check your connection and try again, or conduct with your mouse.';
+      return error?.message?.includes('timed out')
+        ? 'Hand tracking took too long to start. Check your connection and try again, or conduct with your mouse.'
+        : 'Hand tracking couldn\'t load. Check your connection and try again, or conduct with your mouse.';
   }
 }
 
-export async function startHands(video, { onFrame, onStatus }) {
-  if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error('No camera API'), { name: 'NotFoundError' });
-  onStatus?.('Asking for the camera…');
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-    audio: false,
-  });
-  video.srcObject = stream;
-  await video.play();
+let warmPromise = null;
+let landmarkerInstance = null;
 
-  let landmarker;
+async function resolveModelPath() {
   try {
-    onStatus?.('Loading hand tracking…');
+    const res = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+    if (res.ok) return LOCAL_MODEL;
+  } catch { /* use remote fallback */ }
+  return REMOTE_MODEL;
+}
+
+/** Preload MediaPipe and the model in the background so there's zero wait when requested. */
+export function warmHands(onStatus) {
+  if (landmarkerInstance) return Promise.resolve(landmarkerInstance);
+  if (warmPromise) return warmPromise;
+
+  warmPromise = (async () => {
+    onStatus?.('Loading vision engine…');
     const { FilesetResolver, HandLandmarker } = await import(`${LIBRARY}/vision_bundle.mjs`);
     const fileset = await FilesetResolver.forVisionTasks(`${LIBRARY}/wasm`);
+
+    onStatus?.('Loading hand model…');
+    const modelAssetPath = await resolveModelPath();
+
+    onStatus?.('Starting hand tracker…');
     const options = (delegate) => ({
-      baseOptions: { modelAssetPath: MODEL, delegate },
+      baseOptions: { modelAssetPath, delegate },
       runningMode: 'VIDEO',
       numHands: 2,
       minHandDetectionConfidence: 0.6,
       minHandPresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
+
+    const initLandmarker = (delegate, timeoutMs = 8000) =>
+      Promise.race([
+        HandLandmarker.createFromOptions(fileset, options(delegate)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${delegate} startup timed out`)), timeoutMs)),
+      ]);
+
+    // Use CPU by default: avoids 50s ANGLE WebGL shader compile freezes and runs at 60+ FPS via XNNPACK SIMD
     try {
-      landmarker = await HandLandmarker.createFromOptions(fileset, options('GPU'));
-    } catch {
-      landmarker = await HandLandmarker.createFromOptions(fileset, options('CPU'));
+      landmarkerInstance = await initLandmarker('CPU', 8000);
+    } catch (cpuError) {
+      console.warn('CPU tracker init failed, trying GPU:', cpuError);
+      landmarkerInstance = await initLandmarker('GPU', 8000);
     }
+    return landmarkerInstance;
+  })().catch((err) => {
+    warmPromise = null;
+    throw err;
+  });
+
+  return warmPromise;
+}
+
+export async function startHands(video, { onFrame, onStatus }) {
+  if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error('No camera API'), { name: 'NotFoundError' });
+
+  // Start preloading tracker concurrently with camera permission prompt
+  const trackerPromise = warmHands(onStatus);
+
+  onStatus?.('Asking for camera access…');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+    audio: false,
+  });
+
+  video.srcObject = stream;
+  await new Promise((resolve) => {
+    if (video.readyState >= 1) resolve();
+    else {
+      video.onloadedmetadata = () => resolve();
+      setTimeout(resolve, 2000);
+    }
+  });
+
+  try {
+    await video.play();
+  } catch (err) {
+    console.warn('Video play warning:', err);
+  }
+
+  let landmarker;
+  try {
+    landmarker = await trackerPromise;
   } catch (error) {
     stream.getTracks().forEach((track) => track.stop());
     throw error;
@@ -90,7 +154,6 @@ export async function startHands(video, { onFrame, onStatus }) {
           onFrame({ t, hands: result.landmarks.map(readHand) });
         }
       } catch (err) {
-        // Continue tracking smoothly even if a single video frame is malformed
         console.warn('Hand tracking frame skipped:', err);
       }
     }
@@ -103,7 +166,6 @@ export async function startHands(video, { onFrame, onStatus }) {
       running = false;
       stream.getTracks().forEach((track) => track.stop());
       video.srcObject = null;
-      landmarker.close();
     },
   };
 }

@@ -16,6 +16,7 @@ const TYPES = {
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
   '.wasm': 'application/wasm',
+  '.task': 'application/octet-stream',
 };
 
 createServer(async (req, res) => {

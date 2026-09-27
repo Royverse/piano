@@ -5,7 +5,7 @@
 import { Orchestra, sectionLevel } from '../audio/orchestra.js';
 import { Conductor, tempoMark, dynamicMark } from './gesture.js';
 import { Score, PIECES, SECTIONS } from './score.js';
-import { startHands, cameraProblem } from './hands.js';
+import { startHands, warmHands, cameraProblem } from './hands.js';
 import { BatonView } from './baton.js';
 import { analyze, mod12, noteName, noteLabel, spellInKey } from '../theory.js';
 
@@ -62,6 +62,9 @@ export class ConductMode {
     document.body.classList.add('is-conducting');
     this.#showKey();
     this.onChange?.();
+    warmHands((status) => {
+      if (this.state === 'intro') this.ui.introError.textContent = '';
+    });
   }
 
   exit() {
