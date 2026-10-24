@@ -26,8 +26,24 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Music&display=swap&text=%F0%9D%84%9E%F0%9D%84%A2%E2%99%AF%E2%99%AD%E2%99%AE%F0%9D%84%AA%F0%9D%84%AB">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="src/main.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Overtone",
+    "description": "An interactive piano you can see inside, with physical string simulations, harmonic chord detection, and gesture-conducted string orchestra.",
+    "applicationCategory": "MultimediaApplication",
+    "author": {
+      "@type": "Person",
+      "name": "Roy Mootsana",
+      "url": "https://roymootsana.art"
+    }
+  }
+  </script>
 </head>
 <body>
+  <a href="#keyboard" class="skip-link">Skip to piano keys</a>
   <h1 class="visually-hidden">Overtone, a piano you can see inside</h1>
 
   <div class="app">
@@ -154,7 +170,7 @@
     </div>
 
     <div class="keybed">
-      <div class="keys" data-keyboard role="group" aria-label="Piano keys"></div>
+      <div class="keys" id="keyboard" data-keyboard role="group" aria-label="Piano keys"></div>
     </div>
 
     <footer class="rail rail-bottom">

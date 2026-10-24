@@ -1360,3 +1360,32 @@ input[type='range'] { width: 100%; accent-color: var(--brass); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
 }
+
+/* ── Accessible Skip Link & Reduced Motion ── */
+.skip-link {
+  position: fixed;
+  top: -80px;
+  left: 16px;
+  background: var(--brass-deep);
+  color: var(--ivory);
+  padding: 8px 16px;
+  border-radius: 6px;
+  z-index: 99999;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: top 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.skip-link:focus-visible {
+  top: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
