@@ -4,7 +4,7 @@
 
 Play in the browser and watch the strings under the lid. Every note, interval and chord is named as you play and engraved on a grand staff. Then pick up the baton: raise a hand in front of your camera, and a string orchestra follows your beat.
 
-### [**Play it → royverse.github.io/piano**](https://royverse.github.io/piano/)
+### [**Play it → roymootsana.art/overtone**](https://roymootsana.art/overtone/)
 
 ![Overtone: a C major seventh held with the sustain pedal. The struck strings glow, and the readout names the chord and writes it on the staff.](docs/screenshot-piano.jpg)
 
